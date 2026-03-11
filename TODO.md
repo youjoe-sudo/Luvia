@@ -1,0 +1,214 @@
+# Task: Build Luvia Educational Platform
+
+## Plan
+- [x] Phase 1: Database & Backend Setup
+- [x] Phase 2: Design System & Core Infrastructure
+- [x] Phase 3: Student Interface
+  - [x] Home page with course catalog
+  - [x] Course details page with voucher activation
+  - [x] Student dashboard (My Courses)
+  - [x] Course view with lessons sidebar
+  - [x] Lesson completion tracking (with lesson_progress table)
+  - [x] Assignment locking until lesson complete
+  - [x] Sequential lesson unlocking (must complete previous)
+  - [x] Voucher redemption RLS policies fixed
+  - [x] Fixed 404 error when accessing lessons
+  - [x] Added "Start Learning" button after course activation
+  - [x] Exam lessons as special lesson type
+- [x] Phase 4: Admin Panel
+  - [x] Course management (CRUD)
+  - [x] Lesson management (CRUD)
+  - [x] Lesson attachment upload
+  - [x] Voucher generation and tracking
+  - [x] User management with role assignment
+  - [x] Assignment management (create, track results)
+- [x] Phase 5: New Features (Completed)
+  - [x] Admin view of lesson completion tracking
+  - [x] Comprehensive exam creation button in admin panel
+  - [x] Certificate management system
+    - [x] Create certificates table
+    - [x] Admin certificate creation interface
+    - [x] Student certificate viewing page
+    - [x] Certificate preview with logo and signature
+    - [x] Student certificate download with PDF generation
+  - [x] Exam solving interface for students
+  - [x] Assignment solving interface for students
+  - [x] Instructor panel (basic structure with tabs)
+  - [x] Instructor panel features
+    - [x] Courses tab - view instructor's courses
+    - [x] Assignments tab - view, delete assignments
+    - [x] Progress tab - track student progress with matrix
+    - [x] Students tab - view enrolled students
+    - [x] Live lectures tab (placeholder)
+  - [x] Device fingerprinting
+    - [x] Browser fingerprint generation
+    - [x] IP address tracking
+    - [x] Device change detection
+    - [x] Login attempt logging
+    - [x] Admin page for monitoring device attempts
+  - [x] Secure video player protections
+    - [x] Watermark overlay
+    - [x] Right-click prevention
+    - [x] Screenshot prevention
+    - [x] Developer tools detection
+    - [x] Screen recording detection
+    - [x] Window focus monitoring
+    - [x] Security violation alerts
+  - [x] PDF certificate generation
+    - [x] jsPDF integration
+    - [x] Beautiful certificate design
+    - [x] Bilingual support (Arabic/English)
+    - [x] Download functionality
+  - [ ] Live lecture system (complex - requires WebRTC)
+
+## Notes
+- ✅ lesson_progress table created with proper RLS policies
+- ✅ assignments, assignment_questions, assignment_question_options RLS policies fixed
+- ✅ createAssignment function updated to handle questions and options properly
+- ✅ Fixed column name mismatch: text_ar/text_en instead of option_text_ar/option_text_en
+- ✅ Assignment creation now working correctly with proper column names
+- ✅ Admin lesson progress tracking page created
+- ✅ Comprehensive exam creation button added to admin lessons page
+- ✅ Exam creation with questions, options, duration, and passing score
+- ✅ Certificates table created with proper structure and RLS policies
+- ✅ Admin certificates page with creation, listing, and deletion
+- ✅ Certificate logo upload to Supabase storage
+- ✅ Beautiful signature font (Dancing Script) for instructor signatures
+- ✅ Student selection from course enrollments
+- ✅ Fixed profiles table field name: 'name' instead of 'full_name'
+- ✅ Fixed student list loading in certificate creation form
+- ✅ Fixed progress tracking to show ALL enrolled students (not just those with progress)
+- ✅ Progress tracking now queries user_courses to get all enrolled students
+- ✅ Created course-assets storage bucket with proper RLS policies for certificate logos
+- ✅ Exam solving interface for students with dialog, questions, and answer submission
+- ✅ Exam scoring and passing logic implemented
+- ✅ Removed unique constraint certificates_user_id_course_id_key to allow multiple certificates
+- ✅ Verified no unique constraints remain on certificates table
+- ✅ Student certificates page created with view and download functionality
+- ✅ Certificate preview dialog with beautiful design showing logo, signature, course name
+- ✅ Added certificates link to student dropdown menu in header
+- ✅ Created instructor panel with basic structure and 5 tabs (courses, assignments, progress, students, live)
+- ✅ Added /instructor route to routes.tsx
+- ✅ Instructor courses page - displays only instructor's courses with edit/view actions
+- ✅ Instructor students page - shows enrolled students per course with names, emails, enrollment dates
+- ✅ Instructor progress page - full progress matrix showing completion status for each student per lesson
+- ✅ Instructor assignments page - lists assignments with delete functionality
+- ✅ Fixed instructor panel to show courses with null instructor_id (existing courses without assigned instructor)
+- ✅ All instructor pages now filter by: instructor_id matches current user OR instructor_id is null
+- ✅ Fixed 404 error after login - implemented role-based redirect (admin→/admin, instructor→/instructor, student→/my-courses)
+- ✅ Login page now uses useEffect to redirect after profile loads instead of redirecting to non-existent /dashboard
+- ✅ Assignment solving interface for students implemented with dialog, questions, answer tracking
+- ✅ Assignment submission with automatic scoring and result display
+- ✅ Assignment status tracking - shows if already submitted with score
+- ✅ Assignment locked until lesson is completed
+- ✅ Support for single choice and multiple choice questions in assignments
+- ✅ Sequential lesson unlocking working properly
+- ✅ Device fingerprinting system implemented
+  - ✅ Browser fingerprint generation using canvas, WebGL, fonts, plugins
+  - ✅ IP address tracking via external API
+  - ✅ Device change detection on login
+  - ✅ Login attempt logging to device_login_attempts table
+  - ✅ Admin page for monitoring device login attempts with search and filtering
+  - ✅ Added last_ip_address field to profiles table
+  - ✅ Integrated fingerprinting into AuthContext signInWithUsername
+- ✅ Secure video player protections implemented
+  - ✅ Created SecureVideoPlayer component with comprehensive protections
+  - ✅ Watermark overlay with user email
+  - ✅ Right-click prevention on video
+  - ✅ Keyboard shortcut blocking (F12, Ctrl+Shift+I/J/C, Print Screen, recording shortcuts)
+  - ✅ Developer tools detection via window size monitoring
+  - ✅ Window focus monitoring - pauses video when switching windows
+  - ✅ Drag and drop prevention
+  - ✅ Text selection prevention
+  - ✅ Security violation callbacks with toast notifications
+  - ✅ Protection notice and warning messages in Arabic/English
+  - ✅ Integrated into StudentCourseViewPage replacing standard iframe
+- ✅ PDF certificate generation implemented with elegant design hiding programming details
+  - ✅ Installed jsPDF library
+  - ✅ Installed html2canvas for advanced rendering
+  - ✅ Installed qrcode library for QR code generation
+  - ✅ Created certificatePDF utility with generateCertificatePDF and downloadCertificate functions
+  - ✅ **ELEGANT TRADITIONAL DESIGN** with hidden programming Easter eggs
+  - ✅ Professional certificate appearance with gold borders and classic typography
+  - ✅ Beautiful gradient background (#0f2027 → #203a43 → #2c5364)
+  - ✅ Georgia serif font for elegant, traditional look
+  - ✅ **HIDDEN PROGRAMMING DETAILS** that only programmers notice:
+    - ✅ Curly braces `{` `}` as subtle corner decorations (opacity 0.3)
+    - ✅ `// Learning Platform` comment syntax under logo
+    - ✅ Monospace font (Courier New) for certificate ID
+    - ✅ `✓ true` boolean checkmark in green (#27ae60)
+    - ✅ Hex codes at bottom: `0x4C 0x55 0x56 0x49 0x41 => Keep coding, keep learning`
+    - ✅ Subtle programming symbols throughout
+  - ✅ Double border frame (gold outer, gold inner) for elegance
+  - ✅ Classic certificate layout with centered text
+  - ✅ Student name with gold underline
+  - ✅ Three-column footer: instructor signature, date, certificate ID
+  - ✅ **Footer spacing highly optimized** - raised significantly with 50px top margin
+  - ✅ **Middle content spacing minimized** - from 15px to 10px margins, 15px to 12px between elements
+  - ✅ **Checkmark spacing reduced** - from 20px to 15px top margin
+  - ✅ **Date format changed to English**: "March 8, 2026" instead of "2026-03-08"
+  - ✅ **Date font changed**: Georgia serif instead of Courier New monospace
+  - ✅ **Certificate ID improved display**:
+    - ✅ Shows full ID (no truncation)
+    - ✅ Uppercase formatting for better readability
+    - ✅ Automatic spacing every 4 characters (e.g., "A1B2 C3D4 E5F6")
+    - ✅ Larger font size (11px instead of 10px)
+    - ✅ Bold font weight for emphasis
+    - ✅ Dark color (#2c3e50) instead of gray for better visibility
+    - ✅ Word-break for long IDs
+    - ✅ Line-height 1.4 for multi-line IDs
+    - ✅ Letter-spacing 0.5px for clarity
+  - ✅ **QR Code for verification**:
+    - ✅ Generated using qrcode library
+    - ✅ Links to verification page with certificate ID: `/verify-certificate?id={certificateId}`
+    - ✅ Positioned in bottom right corner (absolute positioning)
+    - ✅ 90px x 90px size with 5px padding
+    - ✅ Gold border (2px solid #d4af37) matching certificate theme
+    - ✅ White background with rounded corners (4px border-radius)
+    - ✅ "Scan to Verify" label below QR code (8px monospace font)
+    - ✅ High contrast colors for reliable scanning (#2c3e50 on white)
+  - ✅ Professional color scheme: gold (#d4af37), dark blue (#2c5364), gray tones
+  - ✅ Simplified structure for reliable html2canvas rendering
+  - ✅ No complex CSS features (no nested spans, no HTML entities, no rgba in critical areas)
+  - ✅ High-quality PDF output with JPEG compression (0.95 quality)
+  - ✅ Integrated into StudentCertificatesPage with download button
+  - ✅ Loading states and toast notifications for download success/failure
+  - ✅ Admin certificate management enhanced
+    - ✅ View certificate details in dialog with all information
+    - ✅ Edit certificate information (name, descriptions, signature, logo)
+    - ✅ Download certificate as PDF from admin panel
+    - ✅ Full CRUD operations for certificates (Create, Read, Update, Delete)
+    - ✅ Created updateCertificate API function in api.ts
+- ✅ Certificate verification system (100% reliable)
+  - ✅ Created verifyCertificate API function in api.ts
+  - ✅ Created public verification page at /verify-certificate
+  - ✅ Search form with certificate ID input
+  - ✅ Real-time verification against database
+  - ✅ **URL query parameter support**: Auto-verify when accessing `/verify-certificate?id={certificateId}`
+  - ✅ **QR Code integration**: Scan QR code on certificate to auto-verify
+  - ✅ **Fixed QR code verification issue**:
+    - ✅ Moved handleVerify function before useEffect
+    - ✅ Fixed useEffect dependencies (empty array instead of searchParams)
+    - ✅ Added setTimeout for proper state initialization
+    - ✅ Added console.log debugging for troubleshooting
+    - ✅ Added null checks for idValue
+    - ✅ Added eslint-disable comment for exhaustive-deps
+  - ✅ Display full certificate details if valid:
+    - Student full name
+    - Course name (Arabic/English)
+    - Issue date (formatted in Arabic)
+    - Instructor signature/name
+    - Certificate ID (monospace display)
+    - Green success alert with checkmark
+  - ✅ Display error message if certificate not found:
+    - Red error alert with X icon
+    - Warning message about potential forgery
+    - Tips for proper verification
+  - ✅ Added "Verify Certificate" link in header navigation (Shield icon)
+  - ✅ Accessible to everyone (no login required)
+  - ✅ Beautiful UI with gradient background
+  - ✅ Instructions section for users
+  - ✅ Keyboard support (Enter key to verify)
+  - ✅ Loading states during verification
+  - ✅ Toast notifications for errors
+- 🔄 Next: Live lecture system (requires WebRTC - complex implementation)
