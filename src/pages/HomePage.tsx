@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getAllCourses } from '@/db/api';
 import type { Course } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, BookOpen } from 'lucide-react';
+import { Search, BookOpen, Sparkles, Zap, GraduationCap, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -17,9 +17,7 @@ export default function HomePage() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadCourses();
-  }, []);
+  useEffect(() => { loadCourses(); }, []);
 
   useEffect(() => {
     if (searchQuery) {
@@ -48,127 +46,177 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/10 via-secondary/10 to-background py-20">
-        <div className="container">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h1 className="text-5xl md:text-6xl font-bold gradient-text">
-              Luvia
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground">
-              {t('منصة تعليمية متقدمة تربط صانعي المحتوى بالمتعلمين', 'Advanced educational platform connecting content creators with learners')}
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Button size="lg" onClick={() => navigate('/courses')}>
-                <BookOpen className="mr-2 h-5 w-5" />
-                {t('تصفح الكورسات', 'Browse Courses')}
-              </Button>
-              <Button 
+    <div className="min-h-screen bg-[#020617] text-slate-50 overflow-x-hidden">
+      
+      {/* --- BACKGROUND ELEMENTS --- */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[120px] rounded-full" />
+      </div>
+
+      {/* --- HERO SECTION --- */}
+      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+        <div className="container mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-8"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{t('مستقبل التعليم الرقمي وصل', 'The Future of Learning is Here')}</span>
+          </motion.div>
+
+          <motion.h1 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50"
+          >
+            Luvia <span className="text-blue-500">Universe</span>
+          </motion.h1>
+
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg md:text-2xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
+            {t('منصة تعليمية متقدمة تربط صانعي المحتوى بالمتعلمين بأحدث التقنيات الذكية', 'An advanced educational platform connecting creators with learners through smart technologies.')}
+          </motion.p>
+
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            {/* Play Button - النسخة المعدلة اللي طلبها المستخدم */}
+            <button
+              onClick={() => navigate('/play')}
+              className="group relative w-full sm:w-auto px-10 py-5 bg-[#0f172a] rounded-2xl overflow-hidden transition-all duration-500 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-900/20"
+            >
+              <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,#3b82f6,#8b5cf6,#3b82f6)] animate-[spin_6s_linear_infinite]" />
+              </div>
+              <div className="absolute inset-[1.5px] bg-[#020617]/90 backdrop-blur-2xl rounded-[15px] z-10" />
+              <div className="relative z-20 flex items-center gap-4">
+                <div className="flex flex-col items-start">
+                  <span className="text-[8px] font-mono tracking-[0.3em] text-blue-500 uppercase">Protocol: Play</span>
+                  <span className="text-xl font-black text-white italic">{t('العب مع Luvia', 'Play with Luvia')}</span>
+                </div>
+                <Zap className="w-5 h-5 text-blue-400 group-hover:animate-bounce" />
+              </div>
+            </button>
+
+<Button 
   size="lg" 
-  onClick={() => navigate('/contact')}
-  className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(37,99,235,0.6)] transition-all duration-300 border-none px-8 py-6 rounded-xl font-bold uppercase tracking-widest text-xs"
+  variant="outline"
+  // أضفنا e.stopPropagation() للتأكد إن الضغطة متروحش لأي عنصر خلفي
+  onClick={(e) => {
+    e.stopPropagation();
+    console.log("Navigating to courses..."); // للتأكد في الـ Console
+    navigate('/courses');
+  }}
+  // أضفنا z-50 و cursor-pointer للتأكد من القابلية للنقر
+  className="relative z-50 w-full sm:w-auto px-10 py-8 rounded-2xl border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 text-lg font-bold group cursor-pointer"
 >
-  <svg 
-    className="mr-2 h-5 w-5 animate-pulse" 
-    fill="none" 
-    stroke="currentColor" 
-    viewBox="0 0 24 24"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-  </svg>
-  {t('تواصل معنا', 'Contact Us')}
+  <BookOpen className="mr-3 w-5 h-5 group-hover:rotate-12 transition-transform" />
+  {t('تصفح الكورسات', 'Explore Courses')}
 </Button>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Courses Section */}
-      <section className="container py-12">
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <h2 className="text-3xl font-bold">
+      {/* --- COURSES GRID --- */}
+      <section className="container mx-auto px-6 py-20 relative z-10">
+        <div className="flex flex-col md:flex-row gap-8 items-center justify-between mb-16">
+          <div className="space-y-2 text-center md:text-right">
+            <h2 className="text-4xl font-black flex items-center gap-3 justify-center md:justify-start">
+              <GraduationCap className="text-blue-500 w-10 h-10" />
               {t('الكورسات المتاحة', 'Available Courses')}
             </h2>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={t('ابحث عن كورس...', 'Search for a course...')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <p className="text-slate-400">{t('اختر مسارك التعليمي وابدأ رحلة النجاح', 'Pick your path and start your journey')}</p>
           </div>
 
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-48 w-full bg-muted" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-6 w-3/4 mb-2 bg-muted" />
-                    <Skeleton className="h-4 w-full bg-muted" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredCourses.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                {t('مفيش كورسات متاحة', 'No courses available')}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCourses.map((course) => (
-                <Card key={course.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate(`/courses/${course.id}`)}>
-                  <CardHeader>
-                    {course.thumbnail_url ? (
-                      <img
-                        src={course.thumbnail_url}
-                        alt={language === 'ar' ? course.title_ar : course.title_en}
-                        className="w-full h-48 object-cover rounded-md"
-                      />
-                    ) : (
-                      <div className="w-full h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-md flex items-center justify-center">
-                        <BookOpen className="h-16 w-16 text-primary" />
-                      </div>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <CardTitle className="mb-2">
-                      {language === 'ar' ? course.title_ar : course.title_en}
-                    </CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {language === 'ar' ? course.description_ar : course.description_en}
-                    </CardDescription>
-                    {course.instructor_name_ar && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {t('المحاضر:', 'Instructor:')} {language === 'ar' ? course.instructor_name_ar : course.instructor_name_en}
-                      </p>
-                    )}
-                  </CardContent>
-                  <CardFooter className="flex justify-between items-center">
-                    {course.price_usd && (
-                      <span className="text-lg font-bold text-primary">
-                        ${course.price_usd}
-                      </span>
-                    )}
-                    <Button variant="outline">
-                      {t('عرض التفاصيل', 'View Details')}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-0 bg-blue-500/20 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+            <Input
+              type="text"
+              placeholder={t('ابحث عن شغفك...', 'Search for your passion...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-14 pl-12 bg-white/5 border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all backdrop-blur-md"
+            />
+          </div>
         </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-[450px] rounded-[2.5rem] bg-white/5 animate-pulse border border-white/10" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <AnimatePresence>
+              {filteredCourses.map((course) => (
+                <motion.div
+                  layout
+                  key={course.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ y: -10 }}
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                  className="group relative cursor-pointer"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 blur-2xl transition-opacity rounded-[2.5rem]" />
+                  
+                  <div className="relative bg-[#0f172a]/50 backdrop-blur-xl border border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col h-full shadow-2xl transition-all group-hover:border-blue-500/50">
+                    
+                    {/* Thumbnail */}
+                    <div className="relative h-56 overflow-hidden">
+                      {course.thumbnail_url ? (
+                        <img src={course.thumbnail_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
+                          <BookOpen className="w-20 h-20 text-blue-500/20" />
+                        </div>
+                      )}
+                      <div className="absolute top-4 right-4 bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                        {course.price_usd ? `$${course.price_usd}` : 'FREE'}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-8 flex flex-col flex-grow">
+                      <h3 className="text-2xl font-bold mb-3 group-hover:text-blue-400 transition-colors">
+                        {language === 'ar' ? course.title_ar : course.title_en}
+                      </h3>
+                      <p className="text-slate-400 text-sm line-clamp-2 mb-6 leading-relaxed">
+                        {language === 'ar' ? course.description_ar : course.description_en}
+                      </p>
+
+                      <div className="mt-auto flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 p-[2px]">
+                            <div className="w-full h-full bg-[#0f172a] rounded-full flex items-center justify-center text-[10px] font-bold">
+                               {course.instructor_name_ar?.slice(0, 1)}
+                            </div>
+                          </div>
+                          <span className="text-xs font-medium text-slate-300">
+                             {language === 'ar' ? course.instructor_name_ar : course.instructor_name_en}
+                          </span>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-slate-600 group-hover:text-blue-400 group-hover:translate-x-2 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
       </section>
+
+      {/* --- FOOTER DECO --- */}
+      <footer className="py-20 text-center opacity-20">
+        <p className="text-sm font-mono tracking-widest uppercase">Luvia Educational Matrix // {new Date().getFullYear()}</p>
+      </footer>
     </div>
   );
 }

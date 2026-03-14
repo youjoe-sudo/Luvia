@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { 
-  getCourseWithLessons, 
-  getLessonAttachments, 
-  markLessonComplete, 
-  checkLessonCompletion, 
+import {
+  getCourseWithLessons,
+  getLessonAttachments,
+  markLessonComplete,
+  checkLessonCompletion,
   getCourseProgress,
   getAssignmentsByLesson,
   getAssignmentWithQuestions,
@@ -14,17 +15,37 @@ import {
   getAssignmentSubmission
 } from '@/db/api';
 import type { CourseWithLessons, Lesson, LessonAttachment, AssignmentWithQuestions } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { PlayCircle, FileText, CheckCircle, Download, ClipboardList, BookOpen, Lock, Award, Clock } from 'lucide-react';
+import {
+  PlayCircle,
+  FileText,
+  CheckCircle,
+  Download,
+  ClipboardList,
+  BookOpen,
+  Lock,
+  Award,
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  Layout,
+  X,
+  AlertCircle,
+  MonitorPlay,
+  FileQuestion,
+  Trophy,
+  PartyPopper,
+  ShieldCheck
+} from 'lucide-react';
 import SecureVideoPlayer from '@/components/SecureVideoPlayer';
 
 export default function StudentCourseViewPage() {
@@ -33,6 +54,8 @@ export default function StudentCourseViewPage() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const { toast } = useToast();
+
+  // --- Core States ---
   const [course, setCourse] = useState<CourseWithLessons | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
@@ -40,875 +63,375 @@ export default function StudentCourseViewPage() {
   const [isLessonCompleted, setIsLessonCompleted] = useState(false);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [markingComplete, setMarkingComplete] = useState(false);
-  const [examDialogOpen, setExamDialogOpen] = useState(false);
-  const [examAnswers, setExamAnswers] = useState<Record<string, string[]>>({});
-  const [examSubmitting, setExamSubmitting] = useState(false);
-  const [examStartTime, setExamStartTime] = useState<Date | null>(null);
-  
-  // Assignment state
+
+  // --- Assignment Logic States ---
   const [assignment, setAssignment] = useState<AssignmentWithQuestions | null>(null);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [assignmentAnswers, setAssignmentAnswers] = useState<Record<string, string[]>>({});
   const [assignmentSubmitting, setAssignmentSubmitting] = useState(false);
   const [assignmentSubmission, setAssignmentSubmission] = useState<any>(null);
-  const [loadingAssignment, setLoadingAssignment] = useState(false);
+  const [showResult, setShowResult] = useState(false);
 
-  useEffect(() => {
-    if (courseId && user) {
-      loadCourse();
-    }
-  }, [courseId, user]);
-
-  useEffect(() => {
-    if (selectedLesson && user) {
-      loadAttachments();
-      checkCompletion();
-      loadAssignment();
-    }
-  }, [selectedLesson, user]);
-
-  const loadCourse = async () => {
+  // --- Loading Logic ---
+  const loadData = useCallback(async () => {
     if (!courseId || !user) return;
     try {
       const data = await getCourseWithLessons(courseId);
       if (data) {
         setCourse(data);
-        
-        // تحميل جميع الدروس المكتملة للكورس
-        // Load all completed lessons for the course
         const progress = await getCourseProgress(user.id, courseId);
         const completedIds = new Set<string>(progress.map((p: any) => p.lesson_id));
         setCompletedLessons(completedIds);
-        
-        // اختيار أول درس غير مكتمل أو الدرس الأول
-        // Select first incomplete lesson or first lesson
-        if (data.lessons && data.lessons.length > 0) {
+        if (data.lessons?.length > 0) {
           const firstIncomplete = data.lessons.find(l => !completedIds.has(l.id));
           setSelectedLesson(firstIncomplete || data.lessons[0]);
         }
       }
-    } catch (error) {
-      console.error('Error loading course:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    } catch (error) { console.error(error); } finally { setLoading(false); }
+  }, [courseId, user]);
 
-  const loadAttachments = async () => {
-    if (!selectedLesson) return;
-    try {
-      const data = await getLessonAttachments(selectedLesson.id);
-      setAttachments(data);
-    } catch (error) {
-      console.error('Error loading attachments:', error);
-    }
-  };
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const checkCompletion = async () => {
+  const loadLessonExtras = useCallback(async () => {
     if (!selectedLesson || !user) return;
-    try {
-      const completed = await checkLessonCompletion(user.id, selectedLesson.id);
-      setIsLessonCompleted(completed);
-      if (completed) {
-        setCompletedLessons(prev => new Set([...prev, selectedLesson.id]));
-      }
-    } catch (error) {
-      console.error('Error checking completion:', error);
+    const [att, comp, assign] = await Promise.all([
+      getLessonAttachments(selectedLesson.id),
+      checkLessonCompletion(user.id, selectedLesson.id),
+      getAssignmentsByLesson(selectedLesson.id)
+    ]);
+    setAttachments(att);
+    setIsLessonCompleted(comp);
+    if (assign?.length > 0) {
+      const fullAssign = await getAssignmentWithQuestions(assign[0].id);
+      const sub = await getAssignmentSubmission(assign[0].id, user.id);
+      setAssignment(fullAssign);
+      setAssignmentSubmission(sub);
     }
-  };
+  }, [selectedLesson, user]);
 
-  const handleMarkComplete = async () => {
-    if (!selectedLesson || !user) return;
-    setMarkingComplete(true);
-    try {
-      await markLessonComplete(user.id, selectedLesson.id);
-      setIsLessonCompleted(true);
-      setCompletedLessons(prev => new Set([...prev, selectedLesson.id]));
-      toast({
-        title: t('تم الإكمال', 'Completed'),
-        description: t('تم تسجيل إكمال الدرس بنجاح', 'Lesson marked as completed successfully'),
-      });
-      
-      // الانتقال تلقائياً للدرس التالي إن وجد
-      // Automatically move to next lesson if available
-      if (course?.lessons) {
-        const currentIndex = course.lessons.findIndex(l => l.id === selectedLesson.id);
-        if (currentIndex >= 0 && currentIndex < course.lessons.length - 1) {
-          const nextLesson = course.lessons[currentIndex + 1];
-          setTimeout(() => {
-            setSelectedLesson(nextLesson);
-            setIsLessonCompleted(false);
-          }, 1000);
-        }
+  useEffect(() => { loadLessonExtras(); }, [loadLessonExtras]);
+
+  // --- Handlers ---
+  const handleAnswer = (qId: string, optId: string, isMulti: boolean) => {
+    setAssignmentAnswers(prev => {
+      const current = prev[qId] || [];
+      if (isMulti) {
+        return { ...prev, [qId]: current.includes(optId) ? current.filter(id => id !== optId) : [...current, optId] };
       }
-    } catch (error) {
-      console.error('Error marking complete:', error);
-      toast({
-        title: t('خطأ', 'Error'),
-        description: t('فشل تسجيل إكمال الدرس', 'Failed to mark lesson as complete'),
-        variant: 'destructive',
-      });
-    } finally {
-      setMarkingComplete(false);
-    }
-  };
-
-  const handleStartExam = () => {
-    setExamDialogOpen(true);
-    setExamStartTime(new Date());
-    setExamAnswers({});
-  };
-
-  const handleExamAnswerChange = (questionId: string, optionIndex: number, isMultiple: boolean) => {
-    setExamAnswers(prev => {
-      const current = prev[questionId] || [];
-      if (isMultiple) {
-        // اختيارات متعددة - إضافة أو إزالة
-        // Multiple choice - add or remove
-        const optionStr = String(optionIndex);
-        if (current.includes(optionStr)) {
-          return { ...prev, [questionId]: current.filter(i => i !== optionStr) };
-        } else {
-          return { ...prev, [questionId]: [...current, optionStr] };
-        }
-      } else {
-        // اختيار واحد - استبدال
-        // Single choice - replace
-        return { ...prev, [questionId]: [String(optionIndex)] };
-      }
+      return { ...prev, [qId]: [optId] };
     });
   };
 
-  const handleSubmitExam = async () => {
-    if (!selectedLesson || !user || !selectedLesson.exam_questions) return;
-
-    // التحقق من الإجابة على جميع الأسئلة
-    // Check if all questions are answered
-    const unansweredQuestions = selectedLesson.exam_questions.filter(
-      (q, index) => !examAnswers[String(index)] || examAnswers[String(index)].length === 0
-    );
-
-    if (unansweredQuestions.length > 0) {
-      toast({
-        title: t('تنبيه', 'Warning'),
-        description: t('يجب الإجابة على جميع الأسئلة', 'Please answer all questions'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setExamSubmitting(true);
-    try {
-      // حساب النتيجة
-      // Calculate score
-      let correctAnswers = 0;
-      selectedLesson.exam_questions.forEach((question, qIndex) => {
-        const studentAnswers = examAnswers[String(qIndex)]?.map(a => parseInt(a)) || [];
-        const correctOptions = question.options
-          .map((opt, idx) => opt.is_correct ? idx : -1)
-          .filter(idx => idx !== -1);
-
-        // التحقق من تطابق الإجابات
-        // Check if answers match
-        const isCorrect = 
-          studentAnswers.length === correctOptions.length &&
-          studentAnswers.every(a => correctOptions.includes(a)) &&
-          correctOptions.every(c => studentAnswers.includes(c));
-
-        if (isCorrect) correctAnswers++;
-      });
-
-      const score = Math.round((correctAnswers / selectedLesson.exam_questions.length) * 100);
-      const passed = score >= (selectedLesson.passing_score || 70);
-
-      if (passed) {
-        // تسجيل إكمال الامتحان
-        // Mark exam as completed
-        await markLessonComplete(user.id, selectedLesson.id);
-        setIsLessonCompleted(true);
-        setCompletedLessons(prev => new Set([...prev, selectedLesson.id]));
-
-        toast({
-          title: t('نجحت!', 'Passed!'),
-          description: t(`لقد حصلت على ${score}% في الامتحان`, `You scored ${score}% on the exam`),
-        });
-      } else {
-        toast({
-          title: t('لم تنجح', 'Not Passed'),
-          description: t(`لقد حصلت على ${score}%. الحد الأدنى للنجاح ${selectedLesson.passing_score}%`, 
-            `You scored ${score}%. Minimum passing score is ${selectedLesson.passing_score}%`),
-          variant: 'destructive',
-        });
-      }
-
-      setExamDialogOpen(false);
-    } catch (error) {
-      console.error('Error submitting exam:', error);
-      toast({
-        title: t('خطأ', 'Error'),
-        description: t('فشل تسليم الامتحان', 'Failed to submit exam'),
-        variant: 'destructive',
-      });
-    } finally {
-      setExamSubmitting(false);
-    }
-  };
-
-  // ==================== Assignment Functions ====================
-  const loadAssignment = async () => {
-    if (!selectedLesson || !user) return;
-    setLoadingAssignment(true);
-    try {
-      // Get assignments for this lesson
-      const assignments = await getAssignmentsByLesson(selectedLesson.id);
-      if (assignments && assignments.length > 0) {
-        // Load first assignment with questions
-        const assignmentData = await getAssignmentWithQuestions(assignments[0].id);
-        setAssignment(assignmentData);
-        
-        // Check if student has already submitted
-        const submission = await getAssignmentSubmission(assignments[0].id, user.id);
-        setAssignmentSubmission(submission);
-      } else {
-        setAssignment(null);
-        setAssignmentSubmission(null);
-      }
-    } catch (error) {
-      console.error('Error loading assignment:', error);
-    } finally {
-      setLoadingAssignment(false);
-    }
-  };
-
-  const handleStartAssignment = () => {
-    setAssignmentAnswers({});
-    setAssignmentDialogOpen(true);
-  };
-
-  const handleAssignmentAnswerChange = (questionId: string, optionId: string, isMultiple: boolean) => {
-    if (isMultiple) {
-      // Multiple choice - toggle option
-      setAssignmentAnswers(prev => {
-        const current = prev[questionId] || [];
-        const newAnswers = current.includes(optionId)
-          ? current.filter(id => id !== optionId)
-          : [...current, optionId];
-        return { ...prev, [questionId]: newAnswers };
-      });
-    } else {
-      // Single choice - replace option
-      setAssignmentAnswers(prev => ({
-        ...prev,
-        [questionId]: [optionId]
-      }));
-    }
-  };
-
-  const handleSubmitAssignment = async () => {
+  const executeSubmission = async () => {
     if (!assignment || !user) return;
-
-    // Check if all questions are answered
-    const unansweredQuestions = assignment.questions.filter(
-      q => !assignmentAnswers[q.id] || assignmentAnswers[q.id].length === 0
-    );
-
-    if (unansweredQuestions.length > 0) {
-      toast({
-        title: t('تنبيه', 'Warning'),
-        description: t('يجب الإجابة على جميع الأسئلة', 'Please answer all questions'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setAssignmentSubmitting(true);
     try {
-      // Format answers for submission
-      const formattedAnswers = Object.entries(assignmentAnswers).map(([questionId, optionIds]) => ({
-        question_id: questionId,
-        selected_option_ids: optionIds
+      const formatted = Object.entries(assignmentAnswers).map(([qId, opts]) => ({
+        question_id: qId, selected_option_ids: opts
       }));
-
-      // Submit assignment
-      const result = await submitAssignment(assignment.id, user.id, formattedAnswers);
-      setAssignmentSubmission(result);
-
-      toast({
-        title: t('تم التسليم', 'Submitted'),
-        description: t(
-          `لقد حصلت على ${result.score.toFixed(0)}% (${Math.round((result.score / 100) * result.total_questions)} من ${result.total_questions})`,
-          `You scored ${result.score.toFixed(0)}% (${Math.round((result.score / 100) * result.total_questions)} out of ${result.total_questions})`
-        ),
-      });
-
+      const res = await submitAssignment(assignment.id, user.id, formatted);
+      setAssignmentSubmission(res);
+      setConfirmSubmitOpen(false);
       setAssignmentDialogOpen(false);
-    } catch (error) {
-      console.error('Error submitting assignment:', error);
-      toast({
-        title: t('خطأ', 'Error'),
-        description: t('فشل تسليم الواجب', 'Failed to submit assignment'),
-        variant: 'destructive',
-      });
+      setShowResult(true); // إظهار النتيجة الرايقة
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setAssignmentSubmitting(false);
     }
   };
 
-  const handleSelectLesson = (lesson: Lesson, index: number) => {
-    // التحقق من أن الدرس السابق مكتمل (إلا إذا كان الدرس الأول)
-    // Check if previous lesson is completed (unless it's the first lesson)
-    if (index > 0 && course?.lessons) {
-      const previousLesson = course.lessons[index - 1];
-      if (!completedLessons.has(previousLesson.id)) {
-        toast({
-          title: t('الدرس مقفل', 'Lesson Locked'),
-          description: t(
-            'يجب إكمال الدرس السابق أولاً',
-            'You must complete the previous lesson first'
-          ),
-          variant: 'destructive',
-        });
-        return;
-      }
+  const nextQuestion = () => {
+    if (assignment && currentQuestionIndex < assignment.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
     }
-
-    setSelectedLesson(lesson);
-    setIsLessonCompleted(completedLessons.has(lesson.id));
   };
 
-  const isLessonLocked = (index: number): boolean => {
-    // الدرس الأول دائماً مفتوح
-    // First lesson is always unlocked
-    if (index === 0) return false;
-    
-    // التحقق من إكمال الدرس السابق
-    // Check if previous lesson is completed
-    if (course?.lessons) {
-      const previousLesson = course.lessons[index - 1];
-      return !completedLessons.has(previousLesson.id);
+  const prevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
     }
-    
-    return true;
   };
 
-  if (loading) {
-    return (
-      <div className="container py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
-            <Skeleton className="h-[600px] w-full bg-muted" />
-          </div>
-          <div className="lg:col-span-3">
-            <Skeleton className="h-[400px] w-full bg-muted mb-4" />
-            <Skeleton className="h-[200px] w-full bg-muted" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!course) {
-    return (
-      <div className="container py-8">
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">{t('الكورس غير موجود', 'Course not found')}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center"><Skeleton className="w-[80%] h-32 rounded-3xl" /></div>;
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="container py-6">
-        {/* Course Header */}
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => navigate('/my-courses')} className="mb-4">
-            ← {t('العودة إلى كورساتي', 'Back to My Courses')}
-          </Button>
-          <h1 className="text-3xl font-bold">
-            {language === 'ar' ? course.title_ar : course.title_en}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {language === 'ar' ? course.instructor_name_ar : course.instructor_name_en}
-          </p>
+    <div className="min-h-screen bg-[#020617] text-slate-50">
+      <div className="container py-10 relative z-10">
+        {/* Header & Main Content (نفس التصميم السابق مع تحسينات طفيفة) */}
+        <div className="flex justify-between items-center mb-10">
+          <h1 className="text-3xl font-black text-white">{language === 'ar' ? course?.title_ar : course?.title_en}</h1>
+          <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/20 px-4 py-2 rounded-xl">
+            Progress: {Math.round((completedLessons.size / (course?.lessons?.length || 1)) * 100)}%
+          </Badge>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Lessons Sidebar - Right side in RTL, Left in LTR */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">{t('قائمة الدروس', 'Lessons')}</CardTitle>
-                <CardDescription>
-                  {course.lessons?.length || 0} {t('درس', 'lessons')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-1 p-4">
-                    {course.lessons && course.lessons.length > 0 ? (
-                      course.lessons.map((lesson, index) => {
-                        const locked = isLessonLocked(index);
-                        const completed = completedLessons.has(lesson.id);
-                        const isSelected = selectedLesson?.id === lesson.id;
-                        const isExam = lesson.lesson_type === 'exam';
-                        
-                        return (
-                          <button
-                            key={lesson.id}
-                            onClick={() => handleSelectLesson(lesson, index)}
-                            disabled={locked}
-                            className={`w-full text-right p-3 rounded-lg transition-colors ${
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : locked
-                                ? 'opacity-50 cursor-not-allowed bg-muted'
-                                : 'hover:bg-muted'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-1">
-                                {locked ? (
-                                  <Lock className="h-5 w-5 text-muted-foreground" />
-                                ) : completed ? (
-                                  <CheckCircle className="h-5 w-5 text-green-500" />
-                                ) : isExam ? (
-                                  <Award className="h-5 w-5 text-amber-500" />
-                                ) : isSelected ? (
-                                  <PlayCircle className="h-5 w-5" />
-                                ) : (
-                                  <div className="h-5 w-5 rounded-full border-2 flex items-center justify-center text-xs">
-                                    {index + 1}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 text-right">
-                                <p className="font-medium text-sm">
-                                  {language === 'ar' ? lesson.title_ar : lesson.title_en}
-                                </p>
-                                {isExam && !completed && (
-                                  <p className="text-xs text-amber-500 mt-1">
-                                    {t('امتحان شامل', 'Comprehensive Exam')}
-                                  </p>
-                                )}
-                                {completed && (
-                                  <p className="text-xs text-green-500 mt-1">
-                                    {t('مكتمل', 'Completed')}
-                                  </p>
-                                )}
-                                {locked && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {t('مقفل', 'Locked')}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        {t('لا توجد دروس', 'No lessons available')}
-                      </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="bg-[#0f172a]/50 border-white/5 backdrop-blur-2xl rounded-[2rem]">
+              <ScrollArea className="h-[70vh] p-4">
+                {course?.lessons?.map((l, i) => (
+                  <button
+                    key={l.id}
+                    onClick={() => setSelectedLesson(l)}
+                    className={`w-full p-4 mb-2 rounded-2xl text-right transition-all ${selectedLesson?.id === l.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-300'}`}
+                  >
+                    <span className="text-xs opacity-50 block mb-1">LESSON {i + 1}</span>
+                    <span className="font-bold block">{language === 'ar' ? l.title_ar : l.title_en}</span>
+                  </button>
+                ))}
+              </ScrollArea>
             </Card>
           </div>
 
-          {/* Main Content - Left side in RTL, Right in LTR */}
-          <div className="lg:col-span-3 order-1 lg:order-2 space-y-6">
-            {selectedLesson ? (
-              <>
-                {/* Video Player or Exam Interface */}
-                {selectedLesson.lesson_type === 'exam' ? (
-                  // Exam Interface
-                  <Card className="border-amber-500/50">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Award className="h-6 w-6 text-amber-500" />
-                        {language === 'ar' ? selectedLesson.title_ar : selectedLesson.title_en}
-                      </CardTitle>
-                      <CardDescription>
-                        {t('امتحان شامل', 'Comprehensive Exam')}
-                        {selectedLesson.exam_duration && (
-                          <span className="mr-2">
-                            • {selectedLesson.exam_duration} {t('دقيقة', 'minutes')}
-                          </span>
-                        )}
-                        {selectedLesson.passing_score && (
-                          <span>
-                            • {t('درجة النجاح:', 'Passing Score:')} {selectedLesson.passing_score}%
-                          </span>
-                        )}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {!isLessonCompleted ? (
-                        <div className="text-center py-12">
-                          <Award className="h-20 w-20 mx-auto mb-4 text-amber-500 opacity-50" />
-                          <h3 className="text-xl font-semibold mb-2">
-                            {t('الامتحان الشامل', 'Comprehensive Exam')}
-                          </h3>
-                          <p className="text-muted-foreground mb-6">
-                            {t(
-                              'اختبر معرفتك بجميع محتويات الكورس',
-                              'Test your knowledge of all course content'
-                            )}
-                          </p>
-                          <Button size="lg" className="gap-2" onClick={handleStartExam}>
-                            <ClipboardList className="h-5 w-5" />
-                            {t('بدء الامتحان', 'Start Exam')}
-                          </Button>
-                        </div>
+          {/* Viewer */}
+          <div className="lg:col-span-3 space-y-6">
+            {selectedLesson && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Card className="bg-black border-none rounded-[2.5rem] overflow-hidden shadow-2xl mb-6">
+                  <SecureVideoPlayer videoId={selectedLesson.google_drive_video_id || ''} watermarkText={user?.email || ''} />
+                </Card>
+{/* زر إكمال المحاضرة - تحت الفيديو مباشرة */}
+<motion.div 
+  initial={{ opacity: 0, y: 10 }} 
+  animate={{ opacity: 1, y: 0 }}
+  className="mb-8"
+>
+  <Button
+    disabled={isLessonCompleted || markingComplete}
+    onClick={async () => {
+      if (!selectedLesson || !user) return;
+      setMarkingComplete(true);
+      try {
+        await markLessonComplete(user.id, selectedLesson.id);
+        setIsLessonCompleted(true);
+        setCompletedLessons(prev => new Set(prev).add(selectedLesson.id));
+        toast({ title: t('عاش يا بطل! تم فتح الواجب', 'Great job! Assignment unlocked') });
+      } catch (error) {
+        toast({ title: "Error", variant: "destructive" });
+      } finally {
+        setMarkingComplete(false);
+      }
+    }}
+    className={`w-full h-16 rounded-[1.5rem] font-black text-lg transition-all flex items-center justify-center gap-3 ${
+      isLessonCompleted 
+      ? 'bg-green-500/10 text-green-400 border border-green-500/20 cursor-default' 
+      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.2)]'
+    }`}
+  >
+    {markingComplete ? (
+      <Clock className="animate-spin w-6 h-6" />
+    ) : isLessonCompleted ? (
+      <>
+        <ShieldCheck className="w-6 h-6" />
+        {t('تم إكمال هذه المحاضرة بنجاح', 'Lesson Completed Successfully')}
+      </>
+    ) : (
+      <>
+        <MonitorPlay className="w-6 h-6" />
+        {t('لقد شاهدت المحاضرة، افتح الواجب الآن', 'I watched the lesson, unlock assignment')}
+      </>
+    )}
+  </Button>
+</motion.div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Assignment Card */}
+                  <Card className="bg-white/5 border-white/5 rounded-[2rem] p-8 text-center">
+                    <ClipboardList className="w-12 h-12 text-purple-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold mb-4">{t('الواجب المنزلي', 'Lesson Assignment')}</h3>
+                    {isLessonCompleted ? (
+                      assignmentSubmission ? (
+                        <Button onClick={() => setShowResult(true)} variant="outline" className="rounded-xl border-purple-500/30 text-purple-400">
+                          {t('عرض النتيجة', 'View Result')}
+                        </Button>
                       ) : (
-                        <div className="text-center py-12">
-                          <CheckCircle className="h-20 w-20 mx-auto mb-4 text-green-500" />
-                          <h3 className="text-xl font-semibold mb-2 text-green-600">
-                            {t('تم إكمال الامتحان', 'Exam Completed')}
-                          </h3>
-                          <p className="text-muted-foreground">
-                            {t('لقد أكملت هذا الامتحان بنجاح', 'You have successfully completed this exam')}
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
+                        <Button onClick={() => setAssignmentDialogOpen(true)} className="bg-purple-600 hover:bg-purple-500 text-white rounded-xl px-10">
+                          {t('ابدأ الحل', 'Start Assignment')}
+                        </Button>
+                      )
+                    ) : (
+                      <p className="text-slate-500 text-sm italic">{t('أكمل الدرس أولاً لفتح الواجب', 'Complete lesson to unlock')}</p>
+                    )}
                   </Card>
-                ) : (
-                  // Video Player
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>
-                        {language === 'ar' ? selectedLesson.title_ar : selectedLesson.title_en}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {selectedLesson.google_drive_video_id ? (
-                        <>
-                          <SecureVideoPlayer 
-                            videoId={selectedLesson.google_drive_video_id}
-                            watermarkText={`Luvia - ${user?.email || ''}`}
-                            onSecurityViolation={() => {
-                              toast({
-                                title: t('تحذير أمني', 'Security Warning'),
-                                description: t(
-                                  'تم اكتشاف محاولة انتهاك. قد يتم إيقاف حسابك.',
-                                  'Violation attempt detected. Your account may be suspended.'
-                                ),
-                                variant: 'destructive',
-                              });
-                            }}
-                          />
-                          {!isLessonCompleted && (
-                            <div className="flex justify-center">
-                              <Button
-                                onClick={handleMarkComplete}
-                                disabled={markingComplete}
-                                size="lg"
-                                className="gap-2"
-                              >
-                                <CheckCircle className="h-5 w-5" />
-                                {markingComplete
-                                  ? t('جاري الحفظ...', 'Saving...')
-                                  : t('تم إكمال الدرس', 'Mark as Complete')}
-                              </Button>
-                            </div>
-                          )}
-                          {isLessonCompleted && (
-                            <div className="flex items-center justify-center gap-2 text-green-600 font-medium">
-                              <CheckCircle className="h-5 w-5" />
-                              {t('تم إكمال هذا الدرس', 'This lesson is completed')}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                          <div className="text-center">
-                            <PlayCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                            <p className="text-muted-foreground">
-                              {t('الفيديو غير متوفر', 'Video not available')}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Attachments - Only for video lessons */}
-                {selectedLesson.lesson_type === 'video' && attachments.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        {t('مرفقات الدرس', 'Lesson Attachments')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {attachments.map((attachment) => (
-                          <Button
-                            key={attachment.id}
-                            variant="outline"
-                            className="justify-start gap-2"
-                            onClick={() => window.open(attachment.file_url, '_blank')}
-                          >
-                            <Download className="h-4 w-4" />
-                            {language === 'ar' ? attachment.name_ar : attachment.name_en}
-                          </Button>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Assignment Section - Only for video lessons */}
-                {selectedLesson.lesson_type === 'video' && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        {isLessonCompleted ? (
-                          <ClipboardList className="h-5 w-5" />
-                        ) : (
-                          <Lock className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        {t('الواجب', 'Assignment')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {isLessonCompleted ? (
-                        loadingAssignment ? (
-                          <div className="text-center py-8">
-                            <Skeleton className="h-16 w-16 mx-auto mb-4" />
-                            <Skeleton className="h-4 w-48 mx-auto" />
-                          </div>
-                        ) : assignment ? (
-                          <div className="text-center py-8">
-                            <ClipboardList className="h-16 w-16 mx-auto mb-4 text-primary" />
-                            <h3 className="font-semibold mb-2">
-                              {language === 'ar' ? assignment.title_ar : assignment.title_en}
-                            </h3>
-                            {assignment.description_ar || assignment.description_en ? (
-                              <p className="text-sm text-muted-foreground mb-4">
-                                {language === 'ar' ? assignment.description_ar : assignment.description_en}
-                              </p>
-                            ) : null}
-                            <div className="flex items-center justify-center gap-2 mb-4 text-sm text-muted-foreground">
-                              <FileText className="h-4 w-4" />
-                              <span>{assignment.questions.length} {t('أسئلة', 'questions')}</span>
-                            </div>
-                            {assignmentSubmission ? (
-                              <div className="space-y-3">
-                                <Badge variant="default" className="text-base px-4 py-2">
-                                  {t('تم التسليم', 'Submitted')} - {assignmentSubmission.score.toFixed(0)}%
-                                </Badge>
-                                <p className="text-sm text-muted-foreground">
-                                  {t(
-                                    `${Math.round((assignmentSubmission.score / 100) * assignmentSubmission.total_questions)} من ${assignmentSubmission.total_questions} إجابات صحيحة`,
-                                    `${Math.round((assignmentSubmission.score / 100) * assignmentSubmission.total_questions)} out of ${assignmentSubmission.total_questions} correct`
-                                  )}
-                                </p>
-                              </div>
-                            ) : (
-                              <Button onClick={handleStartAssignment}>
-                                {t('حل الواجب', 'Solve Assignment')}
-                              </Button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <ClipboardList className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                            <p className="text-muted-foreground mb-4">
-                              {t('لا يوجد واجب لهذا الدرس', 'No assignment for this lesson')}
-                            </p>
-                          </div>
-                        )
-                      ) : (
-                        <div className="text-center py-8">
-                          <Lock className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                          <p className="text-muted-foreground mb-2 font-medium">
-                            {t('الواجب مقفل', 'Assignment Locked')}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {t(
-                              'يجب إكمال مشاهدة الدرس أولاً للوصول إلى الواجب',
-                              'You must complete the lesson first to access the assignment'
-                            )}
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            ) : (
-              <Card>
-                <CardContent className="py-16 text-center">
-                  <PlayCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground">
-                    {t('اختر درساً من القائمة', 'Select a lesson from the list')}
-                  </p>
-                </CardContent>
-              </Card>
+                </div>
+              </motion.div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Exam Dialog */}
-      <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Award className="h-6 w-6 text-amber-500" />
-              {selectedLesson && (language === 'ar' ? selectedLesson.title_ar : selectedLesson.title_en)}
-            </DialogTitle>
-            <DialogDescription className="flex items-center gap-4">
-              {selectedLesson?.exam_duration && (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {selectedLesson.exam_duration} {t('دقيقة', 'minutes')}
-                </span>
-              )}
-              {selectedLesson?.passing_score && (
-                <span>
-                  {t('درجة النجاح:', 'Passing Score:')} {selectedLesson.passing_score}%
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {selectedLesson?.exam_questions?.map((question, qIndex) => (
-              <Card key={qIndex}>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {t('سؤال', 'Question')} {qIndex + 1}
-                  </CardTitle>
-                  <CardDescription>
-                    {language === 'ar' ? question.question_text_ar : question.question_text_en}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {question.question_type === 'single_choice' ? (
-                    <RadioGroup
-                      value={examAnswers[String(qIndex)]?.[0] || ''}
-                      onValueChange={(value) => handleExamAnswerChange(String(qIndex), parseInt(value), false)}
-                    >
-                      {question.options.map((option, oIndex) => (
-                        <div key={oIndex} className="flex items-center space-x-2 space-x-reverse py-2">
-                          <RadioGroupItem value={String(oIndex)} id={`q${qIndex}-o${oIndex}`} />
-                          <Label htmlFor={`q${qIndex}-o${oIndex}`} className="cursor-pointer flex-1">
-                            {language === 'ar' ? option.text_ar : option.text_en}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  ) : (
-                    <div className="space-y-2">
-                      {question.options.map((option, oIndex) => (
-                        <div key={oIndex} className="flex items-center space-x-2 space-x-reverse py-2">
-                          <Checkbox
-                            id={`q${qIndex}-o${oIndex}`}
-                            checked={examAnswers[String(qIndex)]?.includes(String(oIndex)) || false}
-                            onCheckedChange={() => handleExamAnswerChange(String(qIndex), oIndex, true)}
-                          />
-                          <Label htmlFor={`q${qIndex}-o${oIndex}`} className="cursor-pointer flex-1">
-                            {language === 'ar' ? option.text_ar : option.text_en}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+      {/* --- ASSIGNMENT DIALOG (The Interactive Stepper) --- */}
+      <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] bg-[#020617] border-white/10 rounded-[3rem] p-0 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="p-8 border-b border-white/5 bg-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-purple-600/20 flex items-center justify-center border border-purple-500/30">
+                <FileQuestion className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black text-white">{language === 'ar' ? assignment?.title_ar : assignment?.title_en}</DialogTitle>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-32 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-purple-500"
+                      animate={{ width: `${((currentQuestionIndex + 1) / (assignment?.questions.length || 1)) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-mono">Q {currentQuestionIndex + 1} / {assignment?.questions.length}</span>
+                </div>
+              </div>
+            </div>
+            <DialogClose asChild>
+              <Button variant="ghost" className="w-10 h-10 rounded-xl bg-white/5 text-slate-400 hover:text-white"><X className="w-5 h-5" /></Button>
+            </DialogClose>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => setExamDialogOpen(false)} disabled={examSubmitting}>
-              {t('إلغاء', 'Cancel')}
+          {/* Interactive Question Body */}
+          <div className="flex-1 overflow-hidden relative">
+            <AnimatePresence mode="wait">
+              {assignment && (
+                <motion.div
+                  key={currentQuestionIndex}
+                  initial={{ x: 50, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -50, opacity: 0 }}
+                  className="absolute inset-0 p-8 md:p-16 overflow-y-auto"
+                >
+                  <div className="max-w-2xl mx-auto space-y-10">
+                    <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                      {language === 'ar' ? assignment.questions[currentQuestionIndex].question_text_ar : assignment.questions[currentQuestionIndex].question_text_en}
+                    </h2>
+
+                    <div className="space-y-4">
+                      {assignment.questions[currentQuestionIndex].options.map((opt) => {
+                        const isSelected = assignmentAnswers[assignment.questions[currentQuestionIndex].id]?.includes(opt.id);
+                        return (
+                          <Label
+                            key={opt.id}
+                            className={`flex items-center gap-4 p-6 rounded-[1.5rem] border-2 transition-all cursor-pointer group ${isSelected
+                                ? 'bg-purple-600/20 border-purple-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.2)]'
+                                : 'bg-white/10 border-white/20 text-slate-100 hover:bg-white/20 hover:border-white/40'
+                              }`}
+                          >
+                            <Checkbox
+                              checked={isSelected || false}
+                              onCheckedChange={() => handleAnswer(assignment.questions[currentQuestionIndex].id, opt.id, assignment.questions[currentQuestionIndex].question_type === 'multiple_choice')}
+                              className="sr-only"
+                            />
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-purple-500 border-purple-500' : 'border-slate-700'}`}>
+                              {isSelected && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                            </div>
+                            <span className="text-lg font-medium">{language === 'ar' ? opt.text_ar : opt.text_en}</span>
+                          </Label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Navigation Footer */}
+          <div className="p-8 border-t border-white/5 bg-white/5 flex items-center justify-between">
+            <Button
+              variant="ghost"
+              onClick={prevQuestion}
+              disabled={currentQuestionIndex === 0}
+              className="text-slate-400 hover:text-white rounded-xl"
+            >
+              <ChevronLeft className="mr-2 w-5 h-5" /> {t('السابق', 'Back')}
             </Button>
-            <Button onClick={handleSubmitExam} disabled={examSubmitting}>
-              {examSubmitting ? t('جاري التسليم...', 'Submitting...') : t('تسليم الامتحان', 'Submit Exam')}
-            </Button>
+
+            <div className="flex gap-2">
+              {assignment?.questions.map((_, i) => (
+                <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === currentQuestionIndex ? 'bg-purple-500 w-6' : 'bg-white/10'}`} />
+              ))}
+            </div>
+
+            {assignment && currentQuestionIndex === assignment.questions.length - 1 ? (
+              <Button onClick={() => setConfirmSubmitOpen(true)} className="bg-green-600 hover:bg-green-500 text-white rounded-xl px-8 font-black">
+                {t('إنهاء وتسليم', 'Finish & Submit')}
+              </Button>
+            ) : (
+              <Button onClick={nextQuestion} className="bg-white text-black hover:bg-slate-200 rounded-xl px-8 font-black">
+                {t('التالي', 'Next')} <ChevronRight className="ml-2 w-5 h-5" />
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Assignment Dialog */}
-      <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-6 w-6 text-primary" />
-              {assignment && (language === 'ar' ? assignment.title_ar : assignment.title_en)}
-            </DialogTitle>
-            {assignment?.description_ar || assignment?.description_en ? (
-              <DialogDescription>
-                {language === 'ar' ? assignment.description_ar : assignment.description_en}
-              </DialogDescription>
-            ) : null}
-          </DialogHeader>
+      {/* --- CONFIRMATION DIALOG --- */}
+      <Dialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
+        <DialogContent className="bg-[#0f172a] border-white/10 rounded-[2rem] text-center p-10">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <DialogTitle className="text-2xl font-black text-white">{t('هل أنت متأكد من التسليم؟', 'Ready to Submit?')}</DialogTitle>
+          <p className="text-slate-400 mt-2">
+            {t('لقد قمت بالإجابة على ', 'You answered ')}
+            <span className="text-white font-bold">{Object.keys(assignmentAnswers).length}</span>
+            {t(' من أصل ', ' out of ')}
+            <span className="text-white font-bold">{assignment?.questions.length}</span>
+            {t(' سؤالاً.', ' questions.')}
+          </p>
+          <DialogFooter className="mt-8 flex gap-4 sm:justify-center">
+            <Button variant="ghost" onClick={() => setConfirmSubmitOpen(false)} className="rounded-xl text-slate-400">راجع الإجابات</Button>
+            <Button onClick={executeSubmission} disabled={assignmentSubmitting} className="bg-blue-600 hover:bg-blue-500 text-white px-8 rounded-xl font-bold">
+              {assignmentSubmitting ? <Clock className="animate-spin" /> : t('نعم، سلم الآن', 'Yes, Submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <div className="space-y-6 py-4">
-            {assignment?.questions.map((question, qIndex) => (
-              <Card key={question.id}>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {t('سؤال', 'Question')} {qIndex + 1}
-                  </CardTitle>
-                  <CardDescription>
-                    {language === 'ar' ? question.question_text_ar : question.question_text_en}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {question.question_type === 'single_choice' ? (
-                    <RadioGroup
-                      value={assignmentAnswers[question.id]?.[0] || ''}
-                      onValueChange={(value) => handleAssignmentAnswerChange(question.id, value, false)}
-                    >
-                      {question.options.map((option) => (
-                        <div key={option.id} className="flex items-center space-x-2 space-x-reverse py-2">
-                          <RadioGroupItem value={option.id} id={`aq-${option.id}`} />
-                          <Label htmlFor={`aq-${option.id}`} className="cursor-pointer flex-1">
-                            {language === 'ar' ? option.text_ar : option.text_en}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  ) : (
-                    <div className="space-y-2">
-                      {question.options.map((option) => (
-                        <div key={option.id} className="flex items-center space-x-2 space-x-reverse py-2">
-                          <Checkbox
-                            id={`aq-${option.id}`}
-                            checked={assignmentAnswers[question.id]?.includes(option.id) || false}
-                            onCheckedChange={() => handleAssignmentAnswerChange(question.id, option.id, true)}
-                          />
-                          <Label htmlFor={`aq-${option.id}`} className="cursor-pointer flex-1">
-                            {language === 'ar' ? option.text_ar : option.text_en}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+      {/* --- RESULT CELEBRATION MODAL --- */}
+      <Dialog open={showResult} onOpenChange={setShowResult}>
+        <DialogContent className="max-w-md bg-[#020617] border-white/10 rounded-[3rem] p-10 text-center overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-500/20 blur-[80px] rounded-full" />
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => setAssignmentDialogOpen(false)} disabled={assignmentSubmitting}>
-              {t('إلغاء', 'Cancel')}
+          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+            <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-blue-500/20">
+              <Trophy className="w-12 h-12 text-white" />
+            </div>
+            <h2 className="text-3xl font-black text-white mb-2">{t('أحسنت يا بطل!', 'Excellent Work!')}</h2>
+            <p className="text-slate-400 mb-8">{t('لقد أتممت حل الواجب بنجاح.', 'Assignment completed successfully.')}</p>
+
+            <div className="relative w-40 h-40 mx-auto mb-10">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
+                <motion.circle
+                  cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray="440"
+                  initial={{ strokeDashoffset: 440 }}
+                  animate={{ strokeDashoffset: 440 - (440 * (assignmentSubmission?.score || 0)) / 100 }}
+                  className="text-blue-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl font-black text-white">{assignmentSubmission?.score}%</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Score</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">{t('الإجابات الصحيحة', 'Correct')}</p>
+                <p className="text-xl font-black text-green-400">{Math.round(((assignmentSubmission?.score || 0) / 100) * (assignmentSubmission?.total_questions || 0))}</p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">{t('إجمالي الأسئلة', 'Total')}</p>
+                <p className="text-xl font-black text-white">{assignmentSubmission?.total_questions || 0}</p>
+              </div>
+            </div>
+
+            <Button onClick={() => setShowResult(false)} className="w-full h-14 bg-white text-black hover:bg-slate-200 rounded-2xl font-black text-lg">
+              {t('العودة للدرس', 'Back to Lesson')}
             </Button>
-            <Button onClick={handleSubmitAssignment} disabled={assignmentSubmitting}>
-              {assignmentSubmitting ? t('جاري التسليم...', 'Submitting...') : t('تسليم الواجب', 'Submit Assignment')}
-            </Button>
-          </div>
+          </motion.div>
         </DialogContent>
       </Dialog>
     </div>

@@ -9,6 +9,7 @@ import VerifyCertificatePage from './pages/VerifyCertificatePage';
 import AdminPanel from './pages/AdminPanel';
 import InstructorPanel from './pages/InstructorPanel';
 import NotFound from './pages/NotFound';
+import PlayLuvia from './pages/PlayLuvia';
 import ContactUs from "./pages/Contact"; // تأكد من المسار الصح
 import type { ReactNode } from 'react';
 
@@ -69,6 +70,11 @@ const routes: RouteConfig[] = [
     name: 'Admin Panel',
     path: '/admin',
     element: <AdminPanel />,
+  },
+  {
+    name: 'Play Luvia',
+    path: '/play',
+    element: <PlayLuvia />,
   },
   {
     name: 'Instructor Panel',
