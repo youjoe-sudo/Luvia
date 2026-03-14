@@ -37,7 +37,10 @@ export default function LoginPage() {
             navigate('/instructor', { replace: true });
             break;
           case 'student':
-            navigate('/my-courses', { replace: true });
+            navigate('/student', { replace: true });
+            break;
+          case 'guest':
+            navigate('/courses', { replace: true });
             break;
           default:
             navigate('/', { replace: true });
@@ -54,7 +57,7 @@ export default function LoginPage() {
     const { error } = await signInWithUsername(username, password);
 
     if (error) {
-      setError(t('اسم المستخدم أو كلمة المرور غير صحيحة', 'Invalid username or password'));
+      setError(t('اسم المستخدم أو كلمة المرور غلط', 'Invalid username or password'));
       setLoading(false);
     }
     // لا حاجة للتنقل هنا، سيتم التعامل معه في useEffect
@@ -68,7 +71,7 @@ export default function LoginPage() {
           <div className="text-4xl font-bold gradient-text mb-2">Luvia</div>
           <CardTitle>{t('تسجيل الدخول', 'Login')}</CardTitle>
           <CardDescription>
-            {t('أدخل اسم المستخدم وكلمة المرور للدخول', 'Enter your username and password to login')}
+            {t('دخل اسم المستخدم والباسوورد للدخول', 'Enter your username and password to login')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -87,19 +90,19 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                placeholder={t('أدخل اسم المستخدم', 'Enter username')}
+                placeholder={t('دخل اسم المستخدم', 'Enter username')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{t('كلمة المرور', 'Password')}</Label>
+              <Label htmlFor="password">{t('الباسوورد', 'Password')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder={t('أدخل كلمة المرور', 'Enter password')}
+                placeholder={t('دخل الباسوورد', 'Enter password')}
               />
             </div>
 

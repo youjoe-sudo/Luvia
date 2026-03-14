@@ -9,6 +9,7 @@ import VerifyCertificatePage from './pages/VerifyCertificatePage';
 import AdminPanel from './pages/AdminPanel';
 import InstructorPanel from './pages/InstructorPanel';
 import NotFound from './pages/NotFound';
+import ContactUs from "./pages/Contact"; // تأكد من المسار الصح
 import type { ReactNode } from 'react';
 
 interface RouteConfig {
@@ -78,6 +79,11 @@ const routes: RouteConfig[] = [
     name: 'Not Found',
     path: '*',
     element: <NotFound />,
+  },
+  {
+    name: 'Contact',
+    path: '/contact',
+    element: <ContactUs />,
   },
 ];
 

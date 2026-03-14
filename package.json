@@ -11,6 +11,7 @@
     "secure-check": "tsgo -p tsconfig.check.json && ast-grep scan"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -79,6 +80,7 @@
     "@biomejs/biome": "2.4.5",
     "@tailwindcss/container-queries": "^0.1.1",
     "@types/lodash": "^4.17.20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/video-react": "^0.15.8",

@@ -56,281 +56,70 @@ export async function generateCertificatePDF(data: CertificateData): Promise<Blo
     <div style="
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-      padding: 40px;
+      background: #020617;
+      padding: 30px;
       box-sizing: border-box;
-      font-family: Georgia, serif;
-      color: #2c3e50;
+      font-family: 'JetBrains Mono', monospace;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      position: relative;
     ">
-      <!-- الإطار الخارجي / Outer frame -->
-      <div style="
-        width: 100%;
-        height: 100%;
-        background: #ffffff;
-        border: 3px solid #d4af37;
-        box-sizing: border-box;
-        padding: 35px;
-        position: relative;
-      ">
-        <!-- الإطار الداخلي / Inner frame -->
-        <div style="
-          width: 100%;
-          height: 100%;
-          border: 1px solid #d4af37;
-          padding: 40px;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-        ">
-          <!-- أقواس زخرفية علوية / Top decorative braces -->
-          <div style="
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            font-size: 24px;
-            color: #d4af37;
-            font-family: 'Courier New', monospace;
-            opacity: 0.3;
-          ">{</div>
-          
-          <div style="
-            position: absolute;
-            top: 25px;
-            right: 25px;
-            font-size: 24px;
-            color: #d4af37;
-            font-family: 'Courier New', monospace;
-            opacity: 0.3;
-          ">}</div>
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; height: 300px; background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%); pointer-events: none;"></div>
 
-          <!-- الرأس / Header -->
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px; height: 80px;">
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; display: flex; align-items: center; padding: 0 25px;">
+          <div style="width: 10px; height: 10px; background: #38bdf8; border-radius: 50%; margin-right: 15px; box-shadow: 0 0 10px #38bdf8;"></div>
+          <span style="font-size: 20px; font-weight: 800; letter-spacing: 2px;">LUVIA <span style="color: #38bdf8;">TERMINAL</span></span>
+        </div>
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #38bdf8; letter-spacing: 1px;">
+          SECURE_DOC // V2.0
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; flex-grow: 1;">
+        
+        <div style="grid-column: span 2; grid-row: span 2; background: rgba(30, 41, 59, 0.3); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 40px; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden;">
+          <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #38bdf8;"></div>
+          <div style="color: #64748b; font-size: 12px; margin-bottom: 10px; letter-spacing: 4px;">ACHIEVER_IDENTIFIED</div>
+          <div style="font-size: 52px; font-weight: 900; margin-bottom: 20px; color: #fff; line-height: 1;">${data.studentName.toUpperCase()}</div>
+          <div style="height: 1px; background: rgba(255,255,255,0.05); margin: 20px 0;"></div>
+          <div style="color: #64748b; font-size: 12px; margin-bottom: 10px; letter-spacing: 4px;">MISSION_ACCOMPLISHED</div>
+          <div style="font-size: 28px; color: #38bdf8; font-weight: 700;">&lt;${data.courseName} /&gt;</div>
+        </div>
+
+        <div style="background: #fff; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+          <img src="${qrCodeDataUrl}" style="width: 130px; height: 130px;" />
+          <div style="color: #020617; font-size: 9px; font-weight: bold; margin-top: 10px; font-family: sans-serif;">SCAN_TO_VERIFY</div>
+        </div>
+
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
           <div>
-            <!-- شعار المنصة / Platform logo -->
-            <div style="text-align: center; margin-bottom: 35px;">
-              <div style="
-                font-size: 36px;
-                font-weight: bold;
-                color: #2c5364;
-                letter-spacing: 3px;
-                margin-bottom: 5px;
-              ">LUVIA</div>
-              <div style="
-                font-size: 11px;
-                color: #7f8c8d;
-                letter-spacing: 2px;
-                font-family: 'Courier New', monospace;
-              ">// Learning Platform</div>
-            </div>
-
-            <!-- العنوان / Title -->
-            <div style="text-align: center; margin-bottom: 30px;">
-              <div style="
-                font-size: 16px;
-                color: #7f8c8d;
-                margin-bottom: 15px;
-                letter-spacing: 4px;
-              ">CERTIFICATE OF ACHIEVEMENT</div>
-              
-              <div style="
-                width: 80px;
-                height: 2px;
-                background: #d4af37;
-                margin: 0 auto 20px;
-              "></div>
-
-              <div style="
-                font-size: 14px;
-                color: #95a5a6;
-                font-style: italic;
-              ">This is to certify that</div>
-            </div>
-
-            <!-- اسم الطالب / Student name -->
-            <div style="
-              text-align: center;
-              font-size: 38px;
-              color: #2c3e50;
-              margin-bottom: 25px;
-              font-weight: bold;
-              border-bottom: 2px solid #d4af37;
-              padding-bottom: 10px;
-              max-width: 600px;
-              margin-left: auto;
-              margin-right: auto;
-            ">${data.studentName}</div>
+            <div style="font-size: 9px; color: #38bdf8; margin-bottom: 4px;">ID_HASH</div>
+            <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">${data.certificateId.substring(0, 18)}</div>
           </div>
-
-          <!-- المحتوى الأوسط / Middle content -->
-          <div style="text-align: center; margin: 10px 0;">
-            <div style="
-              font-size: 14px;
-              color: #7f8c8d;
-              line-height: 1.8;
-              margin-bottom: 12px;
-            ">
-              has successfully completed the course
-            </div>
-
-            <div style="
-              font-size: 22px;
-              color: #2c5364;
-              font-weight: bold;
-              margin-bottom: 12px;
-              padding: 0 40px;
-            ">${data.courseName}</div>
-
-            <div style="
-              font-size: 13px;
-              color: #95a5a6;
-              font-style: italic;
-            ">
-              with dedication, commitment, and excellence
-            </div>
-
-            <!-- علامة صح برمجية / Programming checkmark -->
-            <div style="
-              margin-top: 15px;
-              font-size: 14px;
-              color: #27ae60;
-              font-family: 'Courier New', monospace;
-            ">✓ true</div>
+          <div>
+            <div style="font-size: 9px; color: #38bdf8; margin-bottom: 4px;">TIMESTAMP</div>
+            <div style="font-size: 12px; color: #f8fafc;">${formattedDate !== 'Invalid Date' ? formattedDate : new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'})}</div>
           </div>
+        </div>
+      </div>
 
-          <!-- التذييل / Footer -->
-          <div style="margin-top: 50px;">
-            <!-- معلومات التوقيع / Signature info -->
-            <div style="
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-end;
-              margin-bottom: 25px;
-              padding-top: 30px;
-              border-top: 1px solid #ecf0f1;
-            ">
-              <!-- التوقيع / Signature -->
-              <div style="width: 35%; text-align: center;">
-                <div style="
-                  font-size: 18px;
-                  color: #2c3e50;
-                  margin-bottom: 8px;
-                  font-style: italic;
-                ">${data.instructorSignature}</div>
-                <div style="
-                  width: 100%;
-                  height: 1px;
-                  background: #2c3e50;
-                  margin-bottom: 5px;
-                "></div>
-                <div style="
-                  font-size: 10px;
-                  color: #7f8c8d;
-                  letter-spacing: 1px;
-                ">INSTRUCTOR</div>
-              </div>
-
-              <!-- التاريخ / Date -->
-              <div style="width: 30%; text-align: center;">
-                <div style="
-                  font-size: 13px;
-                  color: #2c3e50;
-                  margin-bottom: 8px;
-                  font-family: Georgia, serif;
-                ">${formattedDate}</div>
-                <div style="
-                  width: 100%;
-                  height: 1px;
-                  background: #2c3e50;
-                  margin-bottom: 5px;
-                "></div>
-                <div style="
-                  font-size: 10px;
-                  color: #7f8c8d;
-                  letter-spacing: 1px;
-                ">DATE</div>
-              </div>
-
-              <!-- معرف الشهادة / Certificate ID -->
-              <div style="width: 35%; text-align: center;">
-                <div style="
-                  font-size: 11px;
-                  color: #2c3e50;
-                  margin-bottom: 8px;
-                  font-family: 'Courier New', monospace;
-                  font-weight: bold;
-                  letter-spacing: 0.5px;
-                  word-break: break-all;
-                  line-height: 1.4;
-                ">${data.certificateId.toUpperCase().replace(/(.{4})/g, '$1 ').trim()}</div>
-                <div style="
-                  width: 100%;
-                  height: 1px;
-                  background: #2c3e50;
-                  margin-bottom: 5px;
-                "></div>
-                <div style="
-                  font-size: 10px;
-                  color: #7f8c8d;
-                  letter-spacing: 1px;
-                ">CERTIFICATE ID</div>
-              </div>
-            </div>
-
-            <!-- رسالة مخفية برمجية / Hidden programming message -->
-            <div style="
-              text-align: center;
-              font-size: 9px;
-              color: #bdc3c7;
-              font-family: 'Courier New', monospace;
-              letter-spacing: 0.5px;
-            ">
-              0x4C 0x55 0x56 0x49 0x41 => Keep coding, keep learning
-            </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; height: 100px;">
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px;">
+          <div style="font-size: 14px; color: #fff; margin-bottom: 5px; font-style: italic;">${data.instructorSignature}</div>
+          <div style="font-size: 9px; color: #64748b;">INSTRUCTOR_SIGNATURE</div>
+        </div>
+        <div style="background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></div>
+          <div style="font-size: 11px; color: #22c55e; font-weight: bold;">STATUS: ENCRYPTED_STABLE</div>
+        </div>
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; text-align: right;">
+          <div style="font-size: 10px; color: #475569; line-height: 1.4;">
+            LUVIA PLATFORM © 2026<br/>
+            ALL SYSTEMS OPERATIONAL
           </div>
-
-          <!-- QR Code للتحقق / QR Code for verification -->
-          <div style="
-            position: absolute;
-            bottom: 35px;
-            right: 35px;
-            text-align: center;
-          ">
-            <img src="${qrCodeDataUrl}" style="
-              width: 90px;
-              height: 90px;
-              border: 2px solid #d4af37;
-              border-radius: 4px;
-              background: white;
-              padding: 5px;
-            " />
-            <div style="
-              font-size: 8px;
-              color: #7f8c8d;
-              margin-top: 5px;
-              font-family: 'Courier New', monospace;
-            ">Scan to Verify</div>
-          </div>
-
-          <!-- أقواس زخرفية سفلية / Bottom decorative braces -->
-          <div style="
-            position: absolute;
-            bottom: 25px;
-            left: 25px;
-            font-size: 24px;
-            color: #d4af37;
-            font-family: 'Courier New', monospace;
-            opacity: 0.3;
-          ">{</div>
-          
-          <div style="
-            position: absolute;
-            bottom: 25px;
-            right: 25px;
-            font-size: 24px;
-            color: #d4af37;
-            font-family: 'Courier New', monospace;
-            opacity: 0.3;
-          ">}</div>
         </div>
       </div>
     </div>

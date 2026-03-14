@@ -23,7 +23,7 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError(t('كلمات المرور غير متطابقة', 'Passwords do not match'));
+      setError(t('الباسووردات مش متطابقة', 'Passwords do not match'));
       return;
     }
 
@@ -37,7 +37,7 @@ export default function RegisterPage() {
     const { error: signUpError } = await signUpWithUsername(username, password);
 
     if (signUpError) {
-      setError(t('فشل إنشاء الحساب. اسم المستخدم قد يكون مستخدماً بالفعل', 'Failed to create account. Username may already exist'));
+      setError(t('فشل إنشاء الحساب. اسم المستخدم قد يكون مستخدماً بالفعل (جرب تشيل المسافات والعلامات وخل وخلي الاسم كله بالانجليزي وخلي الحروف كلها Small)', 'Failed to create account. Username may already exist'));
       setLoading(false);
       return;
     }
@@ -59,7 +59,7 @@ export default function RegisterPage() {
           <div className="text-4xl font-bold gradient-text mb-2">Luvia</div>
           <CardTitle>{t('إنشاء حساب جديد', 'Create Account')}</CardTitle>
           <CardDescription>
-            {t('أدخل بياناتك لإنشاء حساب جديد', 'Enter your details to create a new account')}
+            {t('دخل بياناتك لإنشاء حساب جديد', 'Enter your details to create a new account')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -83,26 +83,26 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{t('كلمة المرور', 'Password')}</Label>
+              <Label htmlFor="password">{t('الباسوورد', 'Password')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder={t('أدخل كلمة المرور', 'Enter password')}
+                placeholder={t('دخل الباسوورد', 'Enter password')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t('تأكيد كلمة المرور', 'Confirm Password')}</Label>
+              <Label htmlFor="confirmPassword">{t('تأكيد الباسوورد', 'Confirm Password')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                placeholder={t('أعد إدخال كلمة المرور', 'Re-enter password')}
+                placeholder={t('دخل الباسوورد تاني', 'Re-enter password')}
               />
             </div>
 

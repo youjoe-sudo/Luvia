@@ -60,8 +60,8 @@ export default function CourseDetailsPage() {
   const handleRedeemVoucher = async () => {
     if (!user) {
       toast({
-        title: t('يجب تسجيل الدخول', 'Login Required'),
-        description: t('يجب تسجيل الدخول لتفعيل الكود', 'You must login to redeem a voucher'),
+        title: t('لازم تسجل الدخول', 'Login Required'),
+        description: t('لازم تسجل الدخول علشان تفعل الكود', 'You must login to redeem a voucher'),
         variant: 'destructive',
       });
       navigate('/login', { state: { from: `/courses/${courseId}` } });
@@ -71,7 +71,7 @@ export default function CourseDetailsPage() {
     if (!voucherCode.trim()) {
       toast({
         title: t('خطأ', 'Error'),
-        description: t('الرجاء إدخال كود التفعيل', 'Please enter a voucher code'),
+        description: t('دخل كود التفعيل', 'Please enter a voucher code'),
         variant: 'destructive',
       });
       return;
@@ -89,7 +89,7 @@ export default function CourseDetailsPage() {
     } catch (error: any) {
       toast({
         title: t('فشل التفعيل', 'Activation Failed'),
-        description: error.message || t('كود غير صالح', 'Invalid voucher code'),
+        description: error.message || t('كود غلط', 'Invalid voucher code'),
         variant: 'destructive',
       });
     } finally {
@@ -100,7 +100,7 @@ export default function CourseDetailsPage() {
   const handleWhatsAppContact = () => {
     const message = encodeURIComponent(
       t(
-        `مرحباً، أريد شراء كود تفعيل لكورس: ${course?.title_ar}`,
+        `مرحباً، عايز اشتري كود تفعيل لكورس: ${course?.title_ar}`,
         `Hello, I want to purchase a voucher code for course: ${course?.title_en}`
       )
     );
@@ -201,7 +201,7 @@ export default function CourseDetailsPage() {
           {course.price_usd && (
             <Card>
               <CardHeader>
-                <CardTitle>{t('السعر الاسترشادي', 'Suggested Price')}</CardTitle>
+                <CardTitle>{t('السعر', 'Suggested Price')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-4xl font-bold text-primary mb-4">
@@ -217,7 +217,7 @@ export default function CourseDetailsPage() {
               <CardHeader>
                 <CardTitle>{t('تفعيل الكورس', 'Activate Course')}</CardTitle>
                 <CardDescription>
-                  {t('أدخل كود التفعيل للوصول إلى محتوى الكورس', 'Enter voucher code to access course content')}
+                  {t('دخل كود التفعيل علشان تشوف محتوى الكورس', 'Enter voucher code to access course content')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -259,7 +259,7 @@ export default function CourseDetailsPage() {
                       className="w-full"
                     >
                       <MessageCircle className="mr-2 h-4 w-4" />
-                      {t('شراء عبر واتساب', 'Purchase via WhatsApp')}
+                      {t('اشتري عبر واتساب', 'Purchase via WhatsApp')}
                     </Button>
                   </>
                 )}
@@ -270,10 +270,10 @@ export default function CourseDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-600">
                   <CheckCircle className="h-5 w-5" />
-                  {t('أنت تمتلك هذا الكورس', 'You own this course')}
+                  {t('أنت اشتريت الكورس ده', 'You own this course')}
                 </CardTitle>
                 <CardDescription>
-                  {t('يمكنك البدء في التعلم الآن', 'You can start learning now')}
+                  {t('تقدر تبدأ تتعلم دلوقتي', 'You can start learning now')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
