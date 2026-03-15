@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react'; // استخدمنا useMemo للأداء
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getAllDeviceLoginAttempts } from '@/db/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Search } from 'lucide-react';
+import { Shield, Search, AlertCircle } from 'lucide-react';
 
 interface DeviceLoginAttempt {
   id: string;
@@ -24,49 +24,67 @@ interface DeviceLoginAttempt {
 export default function AdminDeviceAttemptsPage() {
   const { t, language } = useLanguage();
   const [attempts, setAttempts] = useState<DeviceLoginAttempt[]>([]);
-  const [filteredAttempts, setFilteredAttempts] = useState<DeviceLoginAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null); // إضافة حالة للخطأ
+
+  // 1. لوجيك سحب البيانات مع معالجة الأخطاء
+  const loadAttempts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getAllDeviceLoginAttempts();
+      
+      // التأكد أن البيانات مصفوفة قبل الحفظ
+      if (data && Array.isArray(data)) {
+        setAttempts(data as DeviceLoginAttempt[]);
+      } else {
+        console.warn("Data received is not an array:", data);
+        setAttempts([]);
+      }
+    } catch (err) {
+      console.error('Error loading device attempts:', err);
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadAttempts();
   }, []);
 
-  useEffect(() => {
-    // تصفية المحاولات بناءً على البحث
-    // Filter attempts based on search
-    if (searchQuery.trim() === '') {
-      setFilteredAttempts(attempts);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = attempts.filter(
-        attempt =>
-          attempt.user_name.toLowerCase().includes(query) ||
-          attempt.user_email.toLowerCase().includes(query) ||
-          attempt.new_ip_address.includes(query)
-      );
-      setFilteredAttempts(filtered);
-    }
-  }, [searchQuery, attempts]);
+  // 2. لوجيك التصفية باستخدام useMemo (أسرع وأنضف)
+  const filteredAttempts = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return attempts;
 
-  const loadAttempts = async () => {
-    setLoading(true);
-    try {
-      const data = await getAllDeviceLoginAttempts();
-      setAttempts(data as any);
-      setFilteredAttempts(data as any);
-    } catch (error) {
-      console.error('Error loading device attempts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return attempts.filter(attempt => {
+      // الـ Optional Chaining هنا مهم جداً عشان لو في حقل جاي null الكود ميفصلش
+      const name = attempt.user_name?.toLowerCase() || '';
+      const email = attempt.user_email?.toLowerCase() || '';
+      const ip = attempt.new_ip_address || '';
+      
+      return name.includes(query) || email.includes(query) || ip.includes(query);
+    });
+  }, [searchQuery, attempts]);
 
   if (loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  // لو في خطأ في الـ API نظهر رسالة تنبيه
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-red-500">
+        <AlertCircle className="w-10 h-10 mb-2" />
+        <p>{t('حدث خطأ أثناء تحميل البيانات', 'Error loading data')}</p>
+        <button onClick={loadAttempts} className="mt-4 underline text-blue-500">Retry</button>
       </div>
     );
   }
@@ -117,7 +135,7 @@ export default function AdminDeviceAttemptsPage() {
               <p className="text-muted-foreground">
                 {searchQuery
                   ? t('لا توجد نتائج للبحث', 'No search results')
-                  : t('لا توجد محاولات تسجيل دخول من أجهزة جديدة', 'No new device login attempts')}
+                  : t('لا توجد محاولات تسجيل دخول من أجهزة جديدة حالياً', 'No attempts found')}
               </p>
             </div>
           ) : (
@@ -127,57 +145,24 @@ export default function AdminDeviceAttemptsPage() {
                   <TableRow>
                     <TableHead>{t('المستخدم', 'User')}</TableHead>
                     <TableHead>{t('البريد الإلكتروني', 'Email')}</TableHead>
-                    <TableHead>{t('عنوان IP القديم', 'Old IP')}</TableHead>
                     <TableHead>{t('عنوان IP الجديد', 'New IP')}</TableHead>
-                    <TableHead>{t('البصمة القديمة', 'Old Fingerprint')}</TableHead>
-                    <TableHead>{t('البصمة الجديدة', 'New Fingerprint')}</TableHead>
                     <TableHead>{t('التاريخ', 'Date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAttempts.map((attempt) => (
                     <TableRow key={attempt.id}>
-                      <TableCell className="font-medium">{attempt.user_name}</TableCell>
-                      <TableCell>{attempt.user_email}</TableCell>
-                      <TableCell>
-                        {attempt.old_ip_address ? (
-                          <code className="text-xs bg-muted px-2 py-1 rounded">
-                            {attempt.old_ip_address}
-                          </code>
-                        ) : (
-                          <Badge variant="secondary">{t('أول تسجيل', 'First Login')}</Badge>
-                        )}
-                      </TableCell>
+                      <TableCell className="font-medium">{attempt.user_name || 'N/A'}</TableCell>
+                      <TableCell>{attempt.user_email || 'N/A'}</TableCell>
                       <TableCell>
                         <code className="text-xs bg-muted px-2 py-1 rounded">
                           {attempt.new_ip_address}
                         </code>
                       </TableCell>
                       <TableCell>
-                        {attempt.old_browser_fingerprint ? (
-                          <code className="text-xs bg-muted px-2 py-1 rounded max-w-[150px] block truncate">
-                            {attempt.old_browser_fingerprint.substring(0, 16)}...
-                          </code>
-                        ) : (
-                          <Badge variant="secondary">{t('لا يوجد', 'None')}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-muted px-2 py-1 rounded max-w-[150px] block truncate">
-                          {attempt.new_browser_fingerprint.substring(0, 16)}...
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(attempt.attempted_at).toLocaleString(
-                          language === 'ar' ? 'ar-EG' : 'en-US',
-                          {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          }
-                        )}
+                        {attempt.attempted_at ? new Date(attempt.attempted_at).toLocaleString(
+                          language === 'ar' ? 'ar-EG' : 'en-US'
+                        ) : 'N/A'}
                       </TableCell>
                     </TableRow>
                   ))}

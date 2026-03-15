@@ -1,131 +1,97 @@
-// دالة لإنشاء بصمة المتصفح
-// Function to create browser fingerprint
+// دالة لإنشاء بصمة المتصفح - محسنة وأكثر دقة
 export async function generateBrowserFingerprint(): Promise<string> {
   const components: string[] = [];
 
-  // معلومات المتصفح الأساسية
-  // Basic browser information
-  components.push(navigator.userAgent);
-  components.push(navigator.language);
-  components.push(String(navigator.hardwareConcurrency || 0));
-  components.push(String((navigator as any).deviceMemory || 0));
-  components.push(String(screen.width));
-  components.push(String(screen.height));
-  components.push(String(screen.colorDepth));
-  components.push(String(new Date().getTimezoneOffset()));
+  // 1. الأساسيات (مع التأكد من وجود القيم)
+  components.push(navigator.userAgent || 'unknown_ua');
+  components.push(navigator.language || 'unknown_lang');
+  components.push(String(navigator.hardwareConcurrency || 2));
+  components.push(String((navigator as any).deviceMemory || 4));
+  
+  // 2. دقة الشاشة والمنطقة الزمنية
+  components.push(`${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`);
+  components.push(Intl.DateTimeFormat().resolvedOptions().timeZone); // أدق من getTimezoneOffset
 
-  // معلومات Canvas
-  // Canvas fingerprinting
+  // 3. بصمة الـ Canvas (أقوى وسيلة تمييز)
   try {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#f60';
+      canvas.width = 200;
+      canvas.height = 50;
+      ctx.textBaseline = "top";
+      ctx.font = "14px 'Arial'";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#f60";
       ctx.fillRect(125, 1, 62, 20);
-      ctx.fillStyle = '#069';
-      ctx.fillText('Luvia Platform', 2, 15);
+      ctx.fillStyle = "#069";
+      ctx.fillText("Luvia-Platform-Auth-Check", 2, 15);
+      ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+      ctx.fillText("Luvia-Platform-Auth-Check", 4, 17);
       components.push(canvas.toDataURL());
     }
   } catch (e) {
     components.push('canvas-error');
   }
 
-  // معلومات WebGL
-  // WebGL information
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (gl && gl instanceof WebGLRenderingContext) {
-      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-      if (debugInfo) {
-        components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
-        components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
-      }
-    }
-  } catch (e) {
-    components.push('webgl-error');
-  }
-
-  // معلومات الخطوط المتاحة
-  // Available fonts detection
-  const fonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Palatino', 'Garamond', 'Comic Sans MS', 'Trebuchet MS', 'Impact'];
-  const availableFonts = fonts.filter(font => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return false;
-    ctx.font = `12px ${font}`;
-    const width = ctx.measureText('mmmmmmmmmmlli').width;
-    ctx.font = '12px monospace';
-    const defaultWidth = ctx.measureText('mmmmmmmmmmlli').width;
-    return width !== defaultWidth;
-  });
-  components.push(availableFonts.join(','));
-
-  // معلومات الإضافات
-  // Plugins information
-  const plugins = Array.from(navigator.plugins || [])
-    .map(p => p.name)
-    .sort()
-    .join(',');
-  components.push(plugins);
-
-  // دمج جميع المكونات وإنشاء hash
-  // Combine all components and create hash
-  const fingerprint = await hashString(components.join('|||'));
-  return fingerprint;
+  // 4. دمج المكونات وعمل الـ Hash
+  const rawString = components.join('###');
+  return await hashString(rawString);
 }
 
-// دالة لإنشاء hash من نص
-// Function to create hash from string
+// دالة الـ Hash (ثابتة وسريعة)
 async function hashString(str: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(str);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// دالة للحصول على عنوان IP (يتطلب خدمة خارجية)
-// Function to get IP address (requires external service)
+// دالة الحصول على الـ IP (مع معالجة الـ Timeout)
 export async function getClientIP(): Promise<string> {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    // استخدمنا fetch مع timeout بسيط عشان لو الموقع واقع ميعلقش الصفحة
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 4000); // 4 ثواني كفاية
+
+    const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+    clearTimeout(id);
     const data = await response.json();
     return data.ip;
   } catch (error) {
-    console.error('Error getting IP:', error);
-    return 'unknown';
+    console.error('IP Fetch failed, using fallback');
+    return '0.0.0.0'; // Fallback
   }
 }
 
-// دالة لحفظ بصمة الجهاز عند أول تسجيل دخول
-// Function to save device fingerprint on first login
-export async function saveDeviceFingerprint(userId: string): Promise<{ fingerprint: string; ip: string }> {
-  const fingerprint = await generateBrowserFingerprint();
-  const ip = await getClientIP();
-  
-  // حفظ في localStorage للمقارنة المستقبلية
-  // Save in localStorage for future comparison
-  localStorage.setItem('device_fingerprint', fingerprint);
-  localStorage.setItem('device_ip', ip);
-  
-  return { fingerprint, ip };
-}
-
-// دالة للتحقق من تغيير الجهاز
-// Function to check if device changed
-export async function checkDeviceChange(): Promise<{ changed: boolean; oldFingerprint: string | null; newFingerprint: string; oldIp: string | null; newIp: string }> {
-  const oldFingerprint = localStorage.getItem('device_fingerprint');
-  const oldIp = localStorage.getItem('device_ip');
-  
+// دالة التحقق (اللوجيك الأهم)
+export async function checkDeviceChange(userId: string): Promise<{ 
+  changed: boolean; 
+  oldFingerprint: string | null; 
+  newFingerprint: string; 
+  oldIp: string | null; 
+  newIp: string 
+}> {
+  // 1. نجيب البصمة الحالية والـ IP الحالي
   const newFingerprint = await generateBrowserFingerprint();
   const newIp = await getClientIP();
+
+  // 2. نجيب اللي متخزن في المتصفح
+  const oldFingerprint = localStorage.getItem(`fp_${userId}`);
+  const oldIp = localStorage.getItem(`ip_${userId}`);
+
+  // 3. المنطق:
+  // لو مفيش بصمة قديمة -> ده أول دخول (مش تغيير جهاز)
+  // لو البصمة اختلفت أو الـ IP اختلف -> يبقى فيه تغيير
+  let changed = false;
+  if (oldFingerprint && oldFingerprint !== newFingerprint) {
+    changed = true;
+  }
   
-  const changed = oldFingerprint !== null && (oldFingerprint !== newFingerprint || oldIp !== newIp);
-  
+  // ملحوظة: الـ IP ممكن يتغير لو المستخدم فتح Data أو الراوتر رستر 
+  // فلو عايز تخليك "حنين" شوية، ركز على الـ Fingerprint أكتر من الـ IP
+
   return {
     changed,
     oldFingerprint,
@@ -133,4 +99,15 @@ export async function checkDeviceChange(): Promise<{ changed: boolean; oldFinger
     oldIp,
     newIp
   };
+}
+
+// دالة الحفظ
+export async function saveDeviceFingerprint(userId: string) {
+  const fingerprint = await generateBrowserFingerprint();
+  const ip = await getClientIP();
+  
+  localStorage.setItem(`fp_${userId}`, fingerprint);
+  localStorage.setItem(`ip_${userId}`, ip);
+  
+  return { fingerprint, ip };
 }
