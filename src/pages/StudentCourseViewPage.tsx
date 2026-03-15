@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom'; // شلنا navigate لأنها مش مستخدمة حالياً
+import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -27,11 +27,11 @@ import {
   Trophy,
   X,
   BookOpen,
-  Lock // تأكدت إنها موجودة هنا
+  Lock
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card'; // شلنا CardTitle و CardDescription و CardContent لأنهم مش مستخدمين بالاسم ده هنا
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -184,31 +184,36 @@ export default function StudentCourseViewPage() {
 
           <div className="lg:col-span-3 space-y-6 order-1 lg:order-2">
             {selectedLesson && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="bg-black border-none rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 aspect-video">
-                  <SecureVideoPlayer 
-                    videoId={selectedLesson.google_drive_video_id || ''} 
-                    watermarkText={user?.email || ''} 
-                  />
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full">
+                {/* Fixed Video Aspect Ratio Section */}
+                <Card className="bg-black border-none rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 relative w-full">
+                   <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                    <div className="absolute inset-0 w-full h-full">
+                      <SecureVideoPlayer 
+                        videoId={selectedLesson?.google_drive_video_id || ''} 
+                        watermarkText={user?.email || ''} 
+                      />
+                    </div>
+                  </div>
                 </Card>
 
                 <Button
                     disabled={isLessonCompleted || markingComplete}
                     onClick={async () => {
-                    if (!selectedLesson || !user) return;
-                    setMarkingComplete(true);
-                    try {
-                        await markLessonComplete(user.id, selectedLesson.id);
-                        setIsLessonCompleted(true);
-                        setCompletedLessons(prev => new Set(prev).add(selectedLesson.id));
-                        toast({ title: t('عاش يا بطل! تم فتح الواجب', 'Great job! Assignment unlocked') });
-                    } catch (error) { toast({ title: "Error", variant: "destructive" }); }
-                    finally { setMarkingComplete(false); }
+                      if (!selectedLesson || !user) return;
+                      setMarkingComplete(true);
+                      try {
+                          await markLessonComplete(user.id, selectedLesson.id);
+                          setIsLessonCompleted(true);
+                          setCompletedLessons(prev => new Set(prev).add(selectedLesson.id));
+                          toast({ title: t('عاش يا بطل! تم فتح الواجب', 'Great job! Assignment unlocked') });
+                      } catch (error) { toast({ title: "Error", variant: "destructive" }); }
+                      finally { setMarkingComplete(false); }
                     }}
                     className={`w-full h-16 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 mb-6 ${
-                    isLessonCompleted 
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-900/20'
+                      isLessonCompleted 
+                      ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-900/20'
                     }`}
                 >
                     {markingComplete ? <Clock className="animate-spin w-6 h-6" /> : isLessonCompleted ? <><ShieldCheck className="w-6 h-6" /> {t('تمت المشاهدة', 'Lesson Completed')}</> : <><MonitorPlay className="w-6 h-6" /> {t('أنهيت المشاهدة؟ افتح الواجب', 'Finished? Unlock Assignment')}</>}
@@ -222,7 +227,7 @@ export default function StudentCourseViewPage() {
                         </div>
                         <div>
                             <h4 className="font-bold text-white">{t('واجب المحاضرة', 'Lesson Quiz')}</h4>
-                            <p className="text-xs text-slate-500">{assignment?.questions.length || 0} {t('أسئلة متنوعة', 'Questions')}</p>
+                            <p className="text-xs text-slate-500">{assignment?.questions?.length || 0} {t('أسئلة متنوعة', 'Questions')}</p>
                         </div>
                     </div>
                     {isLessonCompleted ? (
@@ -231,7 +236,7 @@ export default function StudentCourseViewPage() {
                       ) : (
                         <Button size="sm" onClick={() => {
                             setCurrentQuestionIndex(0);
-                            setAssignmentAnswers({}); // Reset answers
+                            setAssignmentAnswers({});
                             setAssignmentDialogOpen(true);
                         }} className="bg-purple-600 hover:bg-purple-500 rounded-lg">{t('بدء', 'Start')}</Button>
                       )
@@ -259,6 +264,7 @@ export default function StudentCourseViewPage() {
         </div>
       </div>
 
+      {/* Assignment Dialog */}
       <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
         <DialogContent className="max-w-4xl w-full h-[100dvh] md:h-[85vh] bg-[#020617] border-none md:border md:border-white/10 p-0 flex flex-col overflow-hidden md:rounded-[3rem]">
           <div className="p-5 md:p-8 border-b border-white/5 bg-white/5 flex items-center justify-between">
@@ -271,9 +277,9 @@ export default function StudentCourseViewPage() {
                     {language === 'ar' ? assignment?.title_ar : assignment?.title_en}
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap">Q {currentQuestionIndex + 1} / {assignment?.questions.length}</span>
+                    <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap">Q {currentQuestionIndex + 1} / {assignment?.questions?.length || 0}</span>
                     <div className="w-20 md:w-32 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div className="h-full bg-purple-500" animate={{ width: `${((currentQuestionIndex + 1) / (assignment?.questions.length || 1)) * 100}%` }} />
+                        <motion.div className="h-full bg-purple-500" animate={{ width: `${((currentQuestionIndex + 1) / (assignment?.questions?.length || 1)) * 100}%` }} />
                     </div>
                 </div>
               </div>
@@ -285,7 +291,7 @@ export default function StudentCourseViewPage() {
 
           <div className="flex-1 overflow-hidden relative bg-[#020617]">
             <AnimatePresence mode="wait">
-              {assignment && (
+              {assignment && assignment.questions && (
                 <motion.div
                   key={currentQuestionIndex}
                   initial={{ opacity: 0, x: 20 }}
@@ -295,11 +301,11 @@ export default function StudentCourseViewPage() {
                 >
                   <div className="max-w-2xl mx-auto">
                     <h2 className="text-xl md:text-2xl font-bold text-white leading-snug mb-8">
-                      {language === 'ar' ? assignment.questions[currentQuestionIndex].question_text_ar : assignment.questions[currentQuestionIndex].question_text_en}
+                      {language === 'ar' ? assignment.questions[currentQuestionIndex]?.question_text_ar : assignment.questions[currentQuestionIndex]?.question_text_en}
                     </h2>
 
                     <div className="space-y-3 md:space-y-4">
-                      {assignment.questions[currentQuestionIndex].options.map((opt) => {
+                      {assignment.questions[currentQuestionIndex]?.options?.map((opt) => {
                         const isSelected = assignmentAnswers[assignment.questions[currentQuestionIndex].id]?.includes(opt.id);
                         return (
                           <Label
@@ -339,12 +345,12 @@ export default function StudentCourseViewPage() {
             </Button>
 
             <div className="hidden md:flex gap-2">
-              {assignment?.questions.map((_, i) => (
+              {assignment?.questions?.map((_, i) => (
                 <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === currentQuestionIndex ? 'bg-purple-500 w-4' : 'bg-white/10'}`} />
               ))}
             </div>
 
-            {assignment && currentQuestionIndex === assignment.questions.length - 1 ? (
+            {assignment && currentQuestionIndex === (assignment.questions?.length || 0) - 1 ? (
               <Button onClick={() => setConfirmSubmitOpen(true)} className="bg-green-600 hover:bg-green-500 text-white h-12 px-6 rounded-xl font-black">
                 {t('تسليم', 'Submit')}
               </Button>
@@ -357,6 +363,7 @@ export default function StudentCourseViewPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Confirmation Dialog */}
       <Dialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
         <DialogContent className="bg-[#0f172a] border-white/10 rounded-[2rem] text-center p-10 max-w-[90vw] md:max-w-md">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
@@ -373,6 +380,7 @@ export default function StudentCourseViewPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Score Result Dialog */}
       <Dialog open={showResult} onOpenChange={setShowResult}>
         <DialogContent className="max-w-md w-[95vw] bg-[#020617] border-white/10 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 text-center overflow-hidden">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
@@ -402,7 +410,6 @@ export default function StudentCourseViewPage() {
           </motion.div>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
