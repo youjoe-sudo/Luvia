@@ -10,6 +10,7 @@ import AdminPanel from './pages/AdminPanel';
 import InstructorPanel from './pages/InstructorPanel';
 import NotFound from './pages/NotFound';
 import PlayLuvia from './pages/PlayLuvia';
+import LuviaPad from './pages/LuviaPad';
 import ContactUs from "./pages/Contact"; // تأكد من المسار الصح
 import type { ReactNode } from 'react';
 
@@ -40,6 +41,11 @@ const routes: RouteConfig[] = [
     name: 'Login',
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    name: 'Luvia Pad',
+    path: '/luvia-pad',
+    element: <LuviaPad />,
   },
   {
     name: 'Register',
