@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, ClipboardList, Trash2, Eye } from 'lucide-react';
+import { Plus, ClipboardList, Trash2, Eye, BookOpen, Layers, Calendar, HelpCircle } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -28,83 +28,29 @@ export default function AdminAssignmentsPage() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
 
-  // Form state
   const [formData, setFormData] = useState({
-    title_ar: '',
-    title_en: '',
-    description_ar: '',
-    description_en: '',
+    title_ar: '', title_en: '',
+    description_ar: '', description_en: '',
     due_date: '',
-    questions: [] as Array<{
-      question_ar: string;
-      question_en: string;
-      type: 'single' | 'multiple';
-      options: Array<{ text_ar: string; text_en: string }>;
-      correct_answers: number[];
-    }>,
+    questions: [] as any[],
   });
 
-  useEffect(() => {
-    loadCourses();
-  }, []);
+  useEffect(() => { loadCourses(); }, []);
+  useEffect(() => { if (selectedCourseId) loadLessons(); }, [selectedCourseId]);
+  useEffect(() => { if (selectedLessonId) loadAssignments(); }, [selectedLessonId]);
 
-  useEffect(() => {
-    if (selectedCourseId) {
-      loadLessons();
-    }
-  }, [selectedCourseId]);
-
-  useEffect(() => {
-    if (selectedLessonId) {
-      loadAssignments();
-    }
-  }, [selectedLessonId]);
-
-  const loadCourses = async () => {
-    try {
-      const data = await getAllCourses(false);
-      setCourses(data);
-    } catch (error) {
-      console.error('Error loading courses:', error);
-    }
-  };
-
-  const loadLessons = async () => {
-    if (!selectedCourseId) return;
-    try {
-      const data = await getLessonsByCourse(selectedCourseId);
-      setLessons(data);
-    } catch (error) {
-      console.error('Error loading lessons:', error);
-    }
-  };
-
-  const loadAssignments = async () => {
-    if (!selectedLessonId) return;
-    try {
-      const data = await getAssignmentsByLesson(selectedLessonId);
-      setAssignments(data);
-    } catch (error) {
-      console.error('Error loading assignments:', error);
-    }
-  };
+  const loadCourses = async () => { try { setCourses(await getAllCourses(false)); } catch (e) { console.error(e); } };
+  const loadLessons = async () => { try { setLessons(await getLessonsByCourse(selectedCourseId)); } catch (e) { console.error(e); } };
+  const loadAssignments = async () => { try { setAssignments(await getAssignmentsByLesson(selectedLessonId)); } catch (e) { console.error(e); } };
 
   const addQuestion = () => {
     setFormData({
       ...formData,
-      questions: [
-        ...formData.questions,
-        {
-          question_ar: '',
-          question_en: '',
-          type: 'single',
-          options: [
-            { text_ar: '', text_en: '' },
-            { text_ar: '', text_en: '' },
-          ],
-          correct_answers: [],
-        },
-      ],
+      questions: [...formData.questions, {
+        question_ar: '', question_en: '', type: 'single',
+        options: [{ text_ar: '', text_en: '' }, { text_ar: '', text_en: '' }],
+        correct_answers: [],
+      }],
     });
   };
 
@@ -114,428 +60,283 @@ export default function AdminAssignmentsPage() {
     setFormData({ ...formData, questions: newQuestions });
   };
 
-  const addOption = (questionIndex: number) => {
+  const addOption = (qIdx: number) => {
     const newQuestions = [...formData.questions];
-    newQuestions[questionIndex].options.push({ text_ar: '', text_en: '' });
+    newQuestions[qIdx].options.push({ text_ar: '', text_en: '' });
     setFormData({ ...formData, questions: newQuestions });
   };
 
-  const updateOption = (questionIndex: number, optionIndex: number, field: 'text_ar' | 'text_en', value: string) => {
+  const updateOption = (qIdx: number, oIdx: number, field: any, value: string) => {
     const newQuestions = [...formData.questions];
-    newQuestions[questionIndex].options[optionIndex][field] = value;
+    newQuestions[qIdx].options[oIdx][field] = value;
     setFormData({ ...formData, questions: newQuestions });
   };
 
-  const toggleCorrectAnswer = (questionIndex: number, optionIndex: number) => {
+  const toggleCorrectAnswer = (qIdx: number, oIdx: number) => {
     const newQuestions = [...formData.questions];
-    const question = newQuestions[questionIndex];
-    
-    if (question.type === 'single') {
-      question.correct_answers = [optionIndex];
-    } else {
-      const idx = question.correct_answers.indexOf(optionIndex);
-      if (idx > -1) {
-        question.correct_answers.splice(idx, 1);
-      } else {
-        question.correct_answers.push(optionIndex);
-      }
+    const q = newQuestions[qIdx];
+    if (q.type === 'single') q.correct_answers = [oIdx];
+    else {
+      const i = q.correct_answers.indexOf(oIdx);
+      i > -1 ? q.correct_answers.splice(i, 1) : q.correct_answers.push(oIdx);
     }
-    
     setFormData({ ...formData, questions: newQuestions });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedCourseId) {
-      toast({
-        title: t('خطأ', 'Error'),
-        description: t('يجب اختيار كورس', 'Please select a course'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!selectedLessonId) {
-      toast({
-        title: t('خطأ', 'Error'),
-        description: t('يجب اختيار درس', 'Please select a lesson'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
-      await createAssignment({
-        course_id: selectedCourseId,
-        lesson_id: selectedLessonId,
-        title_ar: formData.title_ar,
-        title_en: formData.title_en,
-        description_ar: formData.description_ar || null,
-        description_en: formData.description_en || null,
-        due_date: formData.due_date || null,
-        questions: formData.questions,
-      } as any);
-
-      toast({
-        title: t('تم الإنشاء', 'Created'),
-        description: t('تم إنشاء الواجب بنجاح', 'Assignment created successfully'),
-      });
-
-      setDialogOpen(false);
-      loadAssignments();
-      resetForm();
-    } catch (error: any) {
-      console.error('Error creating assignment:', error);
-      console.error('Error message:', error?.message);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      toast({
-        title: t('خطأ', 'Error'),
-        description: error?.message || t('فشل إنشاء الواجب', 'Failed to create assignment'),
-        variant: 'destructive',
-      });
+      await createAssignment({ ...formData, course_id: selectedCourseId, lesson_id: selectedLessonId } as any);
+      toast({ title: t('تم', 'Success'), description: t('تم إنشاء الواجب', 'Created') });
+      setDialogOpen(false); loadAssignments(); resetForm();
+    } catch (err: any) {
+      toast({ title: t('خطأ', 'Error'), description: err.message, variant: 'destructive' });
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title_ar: '',
-      title_en: '',
-      description_ar: '',
-      description_en: '',
-      due_date: '',
-      questions: [],
-    });
-  };
+  const resetForm = () => setFormData({ title_ar: '', title_en: '', description_ar: '', description_en: '', due_date: '', questions: [] });
 
   const handleViewResults = async (assignment: Assignment) => {
     setSelectedAssignment(assignment);
     try {
-      const data = await getAssignmentSubmissions(assignment.id);
-      setSubmissions(data);
+      setSubmissions(await getAssignmentSubmissions(assignment.id));
       setResultsDialogOpen(true);
-    } catch (error) {
-      console.error('Error loading submissions:', error);
-      toast({
-        title: t('خطأ', 'Error'),
-        description: t('فشل تحميل النتائج', 'Failed to load results'),
-        variant: 'destructive',
-      });
-    }
+    } catch (e) { toast({ title: t('خطأ', 'Error'), variant: 'destructive' }); }
   };
 
   return (
-    <div className="container py-8">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{t('إدارة الواجبات', 'Assignment Management')}</CardTitle>
-              <CardDescription>
-                {t('إنشاء ومتابعة الواجبات', 'Create and track assignments')}
-              </CardDescription>
-            </div>
-            {selectedLessonId && (
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetForm}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('إضافة واجب', 'Add Assignment')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>{t('إنشاء واجب جديد', 'Create New Assignment')}</DialogTitle>
-                    <DialogDescription>
-                      {t('أضف الأسئلة والإجابات الصحيحة', 'Add questions and correct answers')}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>{t('عنوان الواجب (عربي)', 'Assignment Title (Arabic)')} *</Label>
-                        <Input
-                          value={formData.title_ar}
-                          onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('عنوان الواجب (إنجليزي)', 'Assignment Title (English)')} *</Label>
-                        <Input
-                          value={formData.title_en}
-                          onChange={(e) => setFormData({ ...formData, title_en: e.target.value })}
-                          required
-                        />
-                      </div>
+    <div className="space-y-6 animate-in fade-in duration-500" dir="ltr">
+      {/* Selection Cards - Stacked on Mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-[#0a0f1e] border-white/5 shadow-xl">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-black flex items-center gap-2 text-blue-400 uppercase tracking-widest">
+              <BookOpen className="w-4 h-4" /> {t('الكورس', 'Course Selection')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+              <SelectTrigger className="bg-black/20 border-white/10 rounded-xl h-12">
+                <SelectValue placeholder={t('اختر كورس', 'Select a course')} />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0f1e] border-white/10 text-white">
+                {courses.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{language === 'ar' ? c.title_ar : c.title_en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#0a0f1e] border-white/5 shadow-xl">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-black flex items-center gap-2 text-emerald-400 uppercase tracking-widest">
+              <Layers className="w-4 h-4" /> {t('الدرس', 'Lesson Selection')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedLessonId} onValueChange={setSelectedLessonId} disabled={!selectedCourseId}>
+              <SelectTrigger className="bg-black/20 border-white/10 rounded-xl h-12">
+                <SelectValue placeholder={t('اختر درس', 'Select a lesson')} />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0f1e] border-white/10 text-white">
+                {lessons.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>{language === 'ar' ? l.title_ar : l.title_en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Assignments Table Card */}
+      <Card className="bg-[#0a0f1e] border-white/5 shadow-2xl rounded-[2rem] overflow-hidden">
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/5 p-6 md:p-8">
+          <div>
+            <CardTitle className="text-2xl font-black italic">{t('الواجبات', 'ASSIGNMENTS')}</CardTitle>
+            <CardDescription className="text-slate-500 font-medium">
+              {t('إدارة الأسئلة ومتابعة نتائج الطلاب', 'Monitor student task performance')}
+            </CardDescription>
+          </div>
+          
+          {selectedLessonId && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm} className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white rounded-2xl px-8 h-12 font-bold shadow-lg shadow-blue-900/20">
+                  <Plus className="w-4 h-4 mr-2" /> {t('إضافة واجب', 'New Assignment')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto bg-[#0a0f1e] border-white/10 text-white rounded-[2rem] p-4 md:p-10 custom-scrollbar">
+                <DialogHeader className="mb-8">
+                  <DialogTitle className="text-3xl font-black italic">{t('إنشاء واجب جديد', 'NEW ASSIGNMENT')}</DialogTitle>
+                </DialogHeader>
+                
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  {/* Basic Info - Title & Description */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('العنوان (AR)', 'Title AR')}</Label>
+                      <Input className="bg-white/5 border-white/10 h-12 rounded-xl" value={formData.title_ar} onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })} required />
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('العنوان (EN)', 'Title EN')}</Label>
+                      <Input className="bg-white/5 border-white/10 h-12 rounded-xl" value={formData.title_en} onChange={(e) => setFormData({ ...formData, title_en: e.target.value })} required />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('الوصف (AR)', 'Desc AR')}</Label>
+                      <Textarea className="bg-white/5 border-white/10 rounded-xl" value={formData.description_ar} onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })} />
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('الوصف (EN)', 'Desc EN')}</Label>
+                      <Textarea className="bg-white/5 border-white/10 rounded-xl" value={formData.description_en} onChange={(e) => setFormData({ ...formData, description_en: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex items-center gap-4">
+                    <Calendar className="text-blue-500 w-5 h-5" />
+                    <div className="flex-1">
+                      <Label className="text-[10px] font-black uppercase text-blue-500/60 mb-1 block">{t('تاريخ التسليم', 'Due Date')}</Label>
+                      <Input type="date" className="bg-transparent border-none p-0 h-auto text-blue-100" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                    </div>
+                  </div>
+
+                  {/* Questions Section */}
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                      <h3 className="text-lg font-black italic flex items-center gap-2"><HelpCircle className="w-5 h-5 text-blue-500"/> {t('الأسئلة', 'QUESTIONS')}</h3>
+                      <Button type="button" variant="outline" size="sm" onClick={addQuestion} className="rounded-xl border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                        <Plus className="h-4 w-4 mr-1" /> {t('إضافة سؤال', 'Add')}
+                      </Button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>{t('الوصف (عربي)', 'Description (Arabic)')}</Label>
-                        <Textarea
-                          value={formData.description_ar}
-                          onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                          rows={3}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('الوصف (إنجليزي)', 'Description (English)')}</Label>
-                        <Textarea
-                          value={formData.description_en}
-                          onChange={(e) => setFormData({ ...formData, description_en: e.target.value })}
-                          rows={3}
-                        />
-                      </div>
-                    </div>
+                    {formData.questions.map((q, qIdx) => (
+                      <Card key={qIdx} className="bg-black/20 border-white/5 rounded-[1.5rem] overflow-hidden">
+                        <CardHeader className="bg-white/5 p-4 flex flex-row justify-between items-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Question #{qIdx + 1}</span>
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:bg-red-500/10" onClick={() => {
+                            const n = [...formData.questions]; n.splice(qIdx, 1); setFormData({...formData, questions: n});
+                          }}><Trash2 className="w-4 h-4"/></Button>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input placeholder="Question (AR)" className="bg-white/5 h-11" value={q.question_ar} onChange={(e) => updateQuestion(qIdx, 'question_ar', e.target.value)} />
+                            <Input placeholder="Question (EN)" className="bg-white/5 h-11" value={q.question_en} onChange={(e) => updateQuestion(qIdx, 'question_en', e.target.value)} />
+                          </div>
+                          
+                          <Select value={q.type} onValueChange={(v) => updateQuestion(qIdx, 'type', v)}>
+                            <SelectTrigger className="bg-white/5 h-11"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-[#0a0f1e] text-white">
+                              <SelectItem value="single">{t('اختيار واحد', 'Single')}</SelectItem>
+                              <SelectItem value="multiple">{t('متعدد', 'Multiple')}</SelectItem>
+                            </SelectContent>
+                          </Select>
 
-                    <div className="space-y-2">
-                      <Label>{t('تاريخ التسليم', 'Due Date')}</Label>
-                      <Input
-                        type="date"
-                        value={formData.due_date}
-                        onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-lg">{t('الأسئلة', 'Questions')}</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          {t('إضافة سؤال', 'Add Question')}
-                        </Button>
-                      </div>
-
-                      {formData.questions.map((question, qIndex) => (
-                        <Card key={qIndex}>
-                          <CardHeader>
-                            <CardTitle className="text-sm">
-                              {t('السؤال', 'Question')} {qIndex + 1}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>{t('نص السؤال (عربي)', 'Question Text (Arabic)')}</Label>
-                                <Input
-                                  value={question.question_ar}
-                                  onChange={(e) => updateQuestion(qIndex, 'question_ar', e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>{t('نص السؤال (إنجليزي)', 'Question Text (English)')}</Label>
-                                <Input
-                                  value={question.question_en}
-                                  onChange={(e) => updateQuestion(qIndex, 'question_en', e.target.value)}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>{t('نوع السؤال', 'Question Type')}</Label>
-                              <Select
-                                value={question.type}
-                                onValueChange={(value) => updateQuestion(qIndex, 'type', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="single">
-                                    {t('اختيار واحد', 'Single Choice')}
-                                  </SelectItem>
-                                  <SelectItem value="multiple">
-                                    {t('اختيارات متعددة', 'Multiple Choice')}
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label>{t('الخيارات', 'Options')}</Label>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => addOption(qIndex)}
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  {t('خيار', 'Option')}
-                                </Button>
-                              </div>
-
-                              {question.options.map((option, oIndex) => (
-                                <div key={oIndex} className="flex items-center gap-2">
-                                  {question.type === 'single' ? (
-                                    <RadioGroup
-                                      value={question.correct_answers[0]?.toString()}
-                                      onValueChange={() => toggleCorrectAnswer(qIndex, oIndex)}
-                                    >
-                                      <RadioGroupItem value={oIndex.toString()} />
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between"><Label className="text-[10px] font-black uppercase opacity-50">{t('الخيارات', 'Options')}</Label>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => addOption(qIdx)} className="h-6 text-[10px] uppercase font-bold text-blue-400">+ Add Option</Button></div>
+                            
+                            {q.options.map((opt: any, oIdx: number) => (
+                              <div key={oIdx} className="flex flex-col md:flex-row gap-3 p-3 bg-white/5 rounded-xl">
+                                <div className="flex items-center gap-2 pt-2 md:pt-0">
+                                  {q.type === 'single' ? (
+                                    <RadioGroup value={q.correct_answers[0]?.toString()} onValueChange={() => toggleCorrectAnswer(qIdx, oIdx)}>
+                                      <RadioGroupItem value={oIdx.toString()} className="border-blue-500" />
                                     </RadioGroup>
                                   ) : (
-                                    <Checkbox
-                                      checked={question.correct_answers.includes(oIndex)}
-                                      onCheckedChange={() => toggleCorrectAnswer(qIndex, oIndex)}
-                                    />
+                                    <Checkbox checked={q.correct_answers.includes(oIdx)} onCheckedChange={() => toggleCorrectAnswer(qIdx, oIdx)} className="border-blue-500" />
                                   )}
-                                  <Input
-                                    placeholder={t('النص بالعربية', 'Text in Arabic')}
-                                    value={option.text_ar}
-                                    onChange={(e) => updateOption(qIndex, oIndex, 'text_ar', e.target.value)}
-                                    className="flex-1"
-                                  />
-                                  <Input
-                                    placeholder={t('النص بالإنجليزية', 'Text in English')}
-                                    value={option.text_en}
-                                    onChange={(e) => updateOption(qIndex, oIndex, 'text_en', e.target.value)}
-                                    className="flex-1"
-                                  />
                                 </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                        {t('إلغاء', 'Cancel')}
-                      </Button>
-                      <Button type="submit">{t('إنشاء', 'Create')}</Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>{t('اختر الكورس', 'Select Course')}</Label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('اختر كورس', 'Select a course')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {language === 'ar' ? course.title_ar : course.title_en}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t('اختر الدرس', 'Select Lesson')}</Label>
-              <Select value={selectedLessonId} onValueChange={setSelectedLessonId} disabled={!selectedCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('اختر درس', 'Select a lesson')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {lessons.map((lesson) => (
-                    <SelectItem key={lesson.id} value={lesson.id}>
-                      {language === 'ar' ? lesson.title_ar : lesson.title_en}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {selectedLessonId && (
-            <>
-              {assignments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ClipboardList className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p>{t('لا توجد واجبات لهذا الدرس', 'No assignments for this lesson')}</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('العنوان', 'Title')}</TableHead>
-                      <TableHead>{t('عدد الأسئلة', 'Questions')}</TableHead>
-                      <TableHead>{t('تاريخ التسليم', 'Due Date')}</TableHead>
-                      <TableHead>{t('عدد المحاولات', 'Submissions')}</TableHead>
-                      <TableHead className="text-right">{t('الإجراءات', 'Actions')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assignments.map((assignment) => (
-                      <TableRow key={assignment.id}>
-                        <TableCell className="font-medium">
-                          {language === 'ar' ? assignment.title_ar : assignment.title_en}
-                        </TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell>
-                          {assignment.due_date
-                            ? new Date(assignment.due_date).toLocaleDateString(
-                                language === 'ar' ? 'ar-SA' : 'en-US'
-                              )
-                            : '-'}
-                        </TableCell>
-                        <TableCell>0</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewResults(assignment)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                                <Input placeholder="AR" className="h-9 text-xs bg-transparent" value={opt.text_ar} onChange={(e) => updateOption(qIdx, oIdx, 'text_ar', e.target.value)} />
+                                <Input placeholder="EN" className="h-9 text-xs bg-transparent" value={opt.text_en} onChange={(e) => updateOption(qIdx, oIdx, 'text_en', e.target.value)} />
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
-              )}
-            </>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-6 border-t border-white/5">
+                    <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>{t('إلغاء', 'Cancel')}</Button>
+                    <Button type="submit" className="bg-blue-600 px-10 rounded-xl">{t('إنشاء', 'Create')}</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {!selectedLessonId ? (
+            <div className="text-center py-20">
+              <ClipboardList className="h-20 w-20 mx-auto mb-4 opacity-10 text-blue-500" />
+              <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{t('اختر درساً أولاً', 'Select a lesson to view tasks')}</p>
+            </div>
+          ) : assignments.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground italic">{t('لا توجد واجبات', 'Empty Lab')}</div>
+          ) : (
+            <div className="overflow-x-auto custom-scrollbar">
+              <Table>
+                <TableHeader className="bg-white/5">
+                  <TableRow className="hover:bg-transparent border-white/5">
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest py-6 px-8">{t('العنوان', 'Title')}</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">{t('التاريخ', 'Due Date')}</TableHead>
+                    <TableHead className="text-right font-black uppercase text-[10px] tracking-widest px-8">{t('الإجراءات', 'Actions')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignments.map((a) => (
+                    <TableRow key={a.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                      <TableCell className="font-bold py-6 px-8">{language === 'ar' ? a.title_ar : a.title_en}</TableCell>
+                      <TableCell className="font-mono text-xs text-slate-500">
+                        {a.due_date ? new Date(a.due_date).toLocaleDateString() : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right px-8">
+                        <Button variant="ghost" size="sm" onClick={() => handleViewResults(a)} className="rounded-xl hover:bg-blue-600 hover:text-white transition-all">
+                          <Eye className="h-4 w-4 mr-2" /> {t('النتائج', 'Results')}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Results Dialog */}
       <Dialog open={resultsDialogOpen} onOpenChange={setResultsDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{t('نتائج الطلاب', 'Student Results')}</DialogTitle>
-            <DialogDescription>
-              {selectedAssignment &&
-                (language === 'ar' ? selectedAssignment.title_ar : selectedAssignment.title_en)}
+        <DialogContent className="max-w-4xl bg-[#0a0f1e] border-white/10 text-white rounded-[2rem]">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">
+              {t('نتائج الطلاب', 'STUDENT RESULTS')}
+            </DialogTitle>
+            <DialogDescription className="text-blue-500 font-bold">
+              {selectedAssignment && (language === 'ar' ? selectedAssignment.title_ar : selectedAssignment.title_en)}
             </DialogDescription>
           </DialogHeader>
-          <div>
+          <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
             {submissions.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">
-                {t('لا توجد محاولات بعد', 'No submissions yet')}
-              </p>
+              <p className="text-center py-12 text-slate-600 font-mono tracking-widest uppercase text-xs">No entries found_</p>
             ) : (
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('الطالب', 'Student')}</TableHead>
+                <TableHeader className="bg-white/5">
+                  <TableRow className="border-white/5 hover:bg-transparent">
+                    <TableHead className="py-4">{t('الطالب', 'Student')}</TableHead>
                     <TableHead>{t('الدرجة', 'Score')}</TableHead>
                     <TableHead>{t('التاريخ', 'Date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {submissions.map((submission) => (
-                    <TableRow key={submission.id}>
-                      <TableCell>{submission.profiles?.name || '-'}</TableCell>
-                      <TableCell>
-                        {submission.score} / {submission.total_score}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(submission.submitted_at).toLocaleDateString(
-                          language === 'ar' ? 'ar-SA' : 'en-US'
-                        )}
-                      </TableCell>
+                  {submissions.map((s) => (
+                    <TableRow key={s.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                      <TableCell className="font-bold">{s.profiles?.name || '-'}</TableCell>
+                      <TableCell className="font-mono text-emerald-500 font-bold">{s.score} / {s.total_score}</TableCell>
+                      <TableCell className="text-xs text-slate-500">{new Date(s.submitted_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
