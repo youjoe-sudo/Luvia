@@ -402,7 +402,29 @@ export async function checkUserOwnsCourse(userId: string, courseId: string) {
   if (error) throw error;
   return !!data;
 }
+// تحديث واجب موجود
+export const updateAssignment = async (id: string, data: Partial<Assignment>) => {
+  const { data: updated, error } = await supabase
+    .from('assignments')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
 
+  if (error) throw error;
+  return updated;
+};
+
+// حذف واجب
+export const deleteAssignment = async (id: string) => {
+  const { error } = await supabase
+    .from('assignments')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+  return true;
+};
 // ==================== Assignment APIs ====================
 export async function getAssignmentsByLesson(lessonId: string) {
   const { data, error } = await supabase

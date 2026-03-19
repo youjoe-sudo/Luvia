@@ -114,6 +114,7 @@ export interface Assignment {
   description_en: string | null;
   due_date: string | null;
   created_at: string;
+  questions: any[]; // ضيف السطر ده هنا
   updated_at: string;
 }
 
