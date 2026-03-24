@@ -4,9 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface RouteGuardProps {
   children: React.ReactNode;
+  isAdminRoute?: boolean; // ضفنا البروب ده هنا
 }
 
-// Please add the pages that can be accessed without logging in to PUBLIC_ROUTES.
 const PUBLIC_ROUTES = ['/login', '/register', '/403', '/404', '/', '/courses', '/courses/*'];
 
 function matchPublicRoute(path: string, patterns: string[]) {
@@ -19,7 +19,7 @@ function matchPublicRoute(path: string, patterns: string[]) {
   });
 }
 
-export function RouteGuard({ children }: RouteGuardProps) {
+export function RouteGuard({ children, isAdminRoute }: RouteGuardProps) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,14 +29,22 @@ export function RouteGuard({ children }: RouteGuardProps) {
 
     const isPublic = matchPublicRoute(location.pathname, PUBLIC_ROUTES);
 
+    // 1. لو مش مسجل دخول وبيحاول يدخل صفحة مش عامة
     if (!user && !isPublic) {
       navigate('/login', { state: { from: location.pathname }, replace: true });
+      return;
     }
-  }, [user, loading, location.pathname, navigate]);
+
+    // 2. القفلة اللي إنت محتاجها: لو بيحاول يدخل صفحة أدمن وهو مش أدمن
+    if (isAdminRoute && user && user.role !== 'admin') {
+      console.error("Access denied: Admin privileges required.");
+      navigate('/', { replace: true }); // رجعه للرئيسية فوراً
+    }
+  }, [user, loading, location.pathname, navigate, isAdminRoute]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-[#050505]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );

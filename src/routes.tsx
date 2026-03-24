@@ -11,14 +11,16 @@ import InstructorPanel from './pages/InstructorPanel';
 import NotFound from './pages/NotFound';
 import PlayLuvia from './pages/PlayLuvia';
 import LuviaPad from './pages/LuviaPad';
-import ContactUs from "./pages/Contact"; // تأكد من المسار الصح
+import ContactUs from "./pages/Contact"; 
 import type { ReactNode } from 'react';
 
+// هنا ضفنا isAdmin عشان الـ TypeScript يوافق عليها
 interface RouteConfig {
   name: string;
   path: string;
   element: ReactNode;
   visible?: boolean;
+  isAdmin?: boolean; // الخاصية دي اختيارية (Optional)
 }
 
 const routes: RouteConfig[] = [
@@ -76,6 +78,7 @@ const routes: RouteConfig[] = [
     name: 'Admin Panel',
     path: '/admin',
     element: <AdminPanel />,
+    isAdmin: true // دلوقتي الـ TypeScript مش هيطلع Error هنا
   },
   {
     name: 'Play Luvia',
@@ -86,6 +89,8 @@ const routes: RouteConfig[] = [
     name: 'Instructor Panel',
     path: '/instructor',
     element: <InstructorPanel />,
+    isAdmin: true // لو حابب تخليها بس للأدمن، أو ممكن تخليها isInstructor: true وتعدل الـ RouteGuard عشان يدعم كمان دور الـ Instructor
+    // ممكن تضيف isAdmin: true هنا كمان لو حابب تحميها
   },
   {
     name: 'Not Found',

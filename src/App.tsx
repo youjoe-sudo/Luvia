@@ -13,25 +13,29 @@ const App: React.FC = () => {
     <Router>
       <LanguageProvider>
         <AuthProvider>
-          <RouteGuard>
-            <IntersectObserver />
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              <main className="flex-grow">
-                <Routes>
-                  {routes.map((route, index) => (
-                    <Route
-                      key={index}
-                      path={route.path}
-                      element={route.element}
-                    />
-                  ))}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </main>
-            </div>
-            <Toaster />
-          </RouteGuard>
+          {/* الـ RouteGuard القديم اللي كان هنا شلناه عشان ميبوظش الـ Logic */}
+          <IntersectObserver />
+          <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-grow">
+              <Routes>
+                {routes.map((route: any, index: number) => (
+                  <Route
+                    key={index}
+                    path={route.path}
+                    element={
+                      // هنا السحر كله: بنبعت الـ isAdmin بتاع الروت للـ Guard
+                      <RouteGuard isAdminRoute={route.isAdmin}>
+                        {route.element}
+                      </RouteGuard>
+                    }
+                  />
+                ))}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
+          </div>
+          <Toaster />
         </AuthProvider>
       </LanguageProvider>
     </Router>
