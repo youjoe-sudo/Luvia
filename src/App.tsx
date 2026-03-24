@@ -13,7 +13,6 @@ const App: React.FC = () => {
     <Router>
       <LanguageProvider>
         <AuthProvider>
-          {/* الـ RouteGuard القديم اللي كان هنا شلناه عشان ميبوظش الـ Logic */}
           <IntersectObserver />
           <div className="flex flex-col min-h-screen">
             <Header />
@@ -24,8 +23,11 @@ const App: React.FC = () => {
                     key={index}
                     path={route.path}
                     element={
-                      // هنا السحر كله: بنبعت الـ isAdmin بتاع الروت للـ Guard
-                      <RouteGuard isAdminRoute={route.isAdmin}>
+                      // نمرر isAdmin و isInstructor للـ Guard
+                      <RouteGuard 
+                        isAdminRoute={route.isAdmin} 
+                        isInstructorRoute={route.isInstructor}
+                      >
                         {route.element}
                       </RouteGuard>
                     }
