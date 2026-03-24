@@ -21,6 +21,7 @@ interface RouteConfig {
   element: ReactNode;
   visible?: boolean;
   isAdmin?: boolean; // الخاصية دي اختيارية (Optional)
+  isInstructor?: boolean; // الخاصية دي اختيارية (Optional)
 }
 
 const routes: RouteConfig[] = [
@@ -89,7 +90,7 @@ const routes: RouteConfig[] = [
     name: 'Instructor Panel',
     path: '/instructor',
     element: <InstructorPanel />,
-    isAdmin: true // لو حابب تخليها بس للأدمن، أو ممكن تخليها isInstructor: true وتعدل الـ RouteGuard عشان يدعم كمان دور الـ Instructor
+    isInstructor: true // لو حابب تخليها بس للأدمن، أو ممكن تخليها isInstructor: true وتعدل الـ RouteGuard عشان يدعم كمان دور الـ Instructor
     // ممكن تضيف isAdmin: true هنا كمان لو حابب تحميها
   },
   {
