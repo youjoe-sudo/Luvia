@@ -13,11 +13,12 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     .maybeSingle();
 
   if (error) {
-    console.error('获取用户信息失败:', error);
+    console.error('获取用户信息失败 (Failed to fetch profile):', error);
     return null;
   }
   return data;
 }
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -35,29 +36,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // دالة لتحديث البروفايل يدوياً أو عند الحاجة
   const refreshProfile = async () => {
     if (!user) {
       setProfile(null);
       return;
     }
-
     const profileData = await getProfile(user.id);
     setProfile(profileData);
   };
 
   useEffect(() => {
+    // التحقق من الجلسة الحالية عند بداية تشغيل التطبيق
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        getProfile(session.user.id).then(setProfile);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        getProfile(currentUser.id).then((data) => {
+          setProfile(data);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
-    // In this function, do NOT use any await calls. Use `.then()` instead to avoid deadlocks.
+
+    // مراقبة تغييرات حالة تسجيل الدخول (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        getProfile(session.user.id).then(setProfile);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        getProfile(currentUser.id).then(setProfile);
       } else {
         setProfile(null);
       }
@@ -68,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithUsername = async (username: string, password: string) => {
     try {
+      setLoading(true);
       const email = `${username}@miaoda.com`;
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -75,15 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) throw error;
-      
-      // التحقق من تغيير الجهاز
-      // Check for device change
+
       if (data.user) {
-        const deviceCheck = await checkDeviceChange();
+        // 1. التحقق من تغيير الجهاز
+        const deviceCheck = await checkDeviceChange(data.user.id);
         
         if (deviceCheck.changed) {
-          // تسجيل محاولة تسجيل دخول من جهاز جديد
-          // Log login attempt from new device
           await logDeviceLoginAttempt(
             data.user.id,
             deviceCheck.oldFingerprint,
@@ -93,15 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         }
         
-        // حفظ بصمة الجهاز الجديدة
-        // Save new device fingerprint
+        // 2. حفظ بصمة الجهاز (حل مشكلة الـ Argument المفقود)
         const { fingerprint, ip } = await saveDeviceFingerprint(data.user.id);
         await updateDeviceFingerprint(data.user.id, fingerprint, ip);
+
+        // 3. جلب البروفايل فوراً عشان الـ Role يظهر صح في الـ App
+        const profileData = await getProfile(data.user.id);
+        setProfile(profileData);
       }
       
       return { error: null };
     } catch (error) {
       return { error: error as Error };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    localStorage.clear(); // تنظيف شامل للمتصفح من أي بيانات قديمة
     setUser(null);
     setProfile(null);
   };
