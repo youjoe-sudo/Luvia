@@ -1,131 +1,195 @@
-import React, { useState, useRef } from 'react';
-import { Play, Trash2, Terminal, Code2, Cpu, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+  Code2, Terminal, Cpu, Zap, Globe, Trash2, ChevronRight, Play, Maximize2
+} from 'lucide-react';
 
-export default function LuviaPad() {
-  const [code, setCode] = useState(`// 🧪 Luvia Static LTR Lab\n\nconst dev = "Mohamed";\nconsole.log("Welcome, " + dev);\n\nfunction checkSystem() {\n  return "All Systems Nominal";\n}\n\nconsole.log(checkSystem());`);
-  const [output, setOutput] = useState<string[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+// Vite CJS Interop Fix
+import EditorComponent from 'react-simple-code-editor';
+// @ts-ignore
+const Editor = EditorComponent.default || EditorComponent;
 
-  const runCode = () => {
-    setOutput([]);
-    const logs: string[] = [];
+// @ts-ignore
+import { highlight, languages } from 'prismjs/components/prism-core';
+import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-markup'; 
+import 'prismjs/components/prism-css';
+import 'prismjs/themes/prism-tomorrow.css';
+
+type EditorMode = 'web' | 'logic' | null;
+
+export default function LuviaWebIDE() {
+  const [mode, setMode] = useState<EditorMode>(null);
+  const [html, setHtml] = useState('\n<h1 class="title">Hello Luvia</h1>');
+  const [css, setCss] = useState('.title { color: #3b82f6; text-align: center; font-family: sans-serif; }');
+  const [js, setJs] = useState('// JavaScript Code\nconsole.log("Hello from Luvia!");');
+  const [logs, setLogs] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
+  const [srcDoc, setSrcDoc] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // تحديث المعاينة للـ Web Mode
+  useEffect(() => {
+    if (mode === 'web') {
+      const timeout = setTimeout(() => {
+        setSrcDoc(`<html><style>${css}</style><body>${html}<script>${js}</script></body></html>`);
+      }, 800);
+      return () => clearTimeout(timeout);
+    }
+  }, [html, css, js, mode]);
+
+  const runLogicCode = () => {
+    const newLogs: string[] = [];
     const customConsole = {
       log: (...args: any[]) => {
-        logs.push(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' '));
+        newLogs.push(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' '));
       },
-      error: (...args: any[]) => logs.push(`❌ Error: ${args.join(' ')}`)
+      error: (...args: any[]) => newLogs.push(`❌ Error: ${args.join(' ')}`)
     };
 
     try {
-      const execute = new Function('console', code);
+      const execute = new Function('console', js);
       execute(customConsole);
-      setOutput(logs.length > 0 ? logs : ["✔ Execution Finished"]);
+      setLogs(newLogs.length > 0 ? newLogs : ["✔ Execution Finished"]);
     } catch (err: any) {
-      setOutput([`❌ Runtime Error: ${err.message}`]);
+      setLogs([`❌ Runtime Error: ${err.message}`]);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = textareaRef.current!.selectionStart;
-      const end = textareaRef.current!.selectionEnd;
-      const newValue = code.substring(0, start) + "  " + code.substring(end);
-      setCode(newValue);
-      setTimeout(() => {
-        textareaRef.current!.selectionStart = textareaRef.current!.selectionEnd = start + 2;
-      }, 0);
-    }
-  };
+  // شاشة الاختيار الأولية
+  if (!mode) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="ltr">
+        <div className="max-w-md w-full bg-[#0a0f1e] border border-white/10 p-8 rounded-[2rem] shadow-2xl text-center">
+          <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Zap className="text-blue-500 w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Luvia Studio</h2>
+          <p className="text-slate-500 text-sm mb-8">What do you want to build today?</p>
+          
+          <div className="space-y-4">
+            <button 
+              onClick={() => { setMode('web'); setActiveTab('html'); }}
+              className="w-full flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all group"
+            >
+              <div className="p-3 bg-orange-500/20 rounded-xl group-hover:scale-110 transition-transform">
+                <Globe className="text-orange-400 w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <div className="text-white font-bold text-sm">Web Development</div>
+                <div className="text-slate-500 text-[10px]">HTML, CSS, Live Preview</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => { setMode('logic'); setActiveTab('js'); }}
+              className="w-full flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all group"
+            >
+              <div className="p-3 bg-yellow-500/20 rounded-xl group-hover:scale-110 transition-transform">
+                <Terminal className="text-yellow-400 w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <div className="text-white font-bold text-sm">Logic & Scripting</div>
+                <div className="text-slate-500 text-[10px]">Pure JavaScript, Console Output</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    // dir="ltr" هنا هي السر.. بتخلي كل حاجة تبدأ من الشمال لليمين غصب عن أي لغة
-    <div className="min-h-screen bg-[#020617] p-2 md:p-6 flex items-center justify-center font-sans text-slate-200" dir="ltr">
-      <div className="w-full max-w-6xl bg-[#0a0f1e] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-[750px]">
+    <div className="min-h-screen bg-[#020617] md:p-6 flex items-center justify-center font-sans text-slate-200" dir="ltr">
+      <div className={`w-full bg-[#0a0f1e] overflow-hidden flex flex-col transition-all duration-300 ${
+        isFullscreen ? 'fixed inset-0 z-50' : 'max-w-7xl border border-white/10 md:rounded-3xl shadow-2xl h-[100dvh] md:h-[85vh]'
+      }`}>
         
-        {/* --- Header --- */}
-        <div className="bg-[#0f172a] border-b border-white/5 p-4 flex items-center justify-between">
+        {/* Header */}
+        <div className="bg-[#0f172a] border-b border-white/5 p-3 md:p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Code2 className="w-5 h-5 text-blue-400" />
-            </div>
-            <h1 className="text-white font-bold tracking-tight text-sm md:text-base uppercase">
-              Luvia <span className="text-blue-500">IDE</span>
+            <Code2 className="w-5 h-5 text-blue-500" />
+            <h1 className="text-white font-bold text-xs md:text-sm uppercase tracking-tighter">
+              Luvia <span className="text-blue-500">{mode === 'web' ? 'Web' : 'Logic'} Lab</span>
             </h1>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setOutput([])} 
-              className="p-2 text-slate-500 hover:text-red-400 transition-colors"
-              title="Clear Console"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={runCode}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-900/20"
-            >
-              <Play className="w-3 h-3 fill-current" /> RUN
-            </button>
-          </div>
-        </div>
-
-        {/* --- Workspace Layout --- */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
-          {/* 1. Editor Side (Left) */}
-          <div className="flex-[1.5] bg-[#020617] p-4 relative border-b md:border-b-0 md:border-r border-white/5">
-            <div className="flex items-center gap-2 mb-2 opacity-40">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-[10px] ml-2 font-mono">index.js</span>
-            </div>
-            <textarea
-              ref={textareaRef}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={handleKeyDown}
-              spellCheck={false}
-              className="w-full h-[calc(100%-25px)] bg-transparent text-blue-50 font-mono text-sm md:text-base outline-none resize-none leading-relaxed custom-scrollbar p-2"
-              style={{ caretColor: '#3b82f6', textAlign: 'left', direction: 'ltr' }}
-            />
-          </div>
-
-          {/* 2. Terminal Side (Right) */}
-          <div className="flex-1 bg-[#050814] flex flex-col min-h-[150px] md:min-h-full">
-            <div className="p-3 bg-black/40 flex items-center gap-2 border-b border-white/5 px-5">
-              <Terminal className="w-3 h-3 text-blue-500" />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Output / Console</span>
-            </div>
-            
-            <div className="flex-1 p-5 font-mono text-xs md:text-sm overflow-y-auto space-y-2 bg-[#050814]/50">
-              {output.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-slate-800 font-bold uppercase tracking-tighter text-[10px]">
-                  Ready to compile...
-                </div>
-              ) : (
-                output.map((line, i) => (
-                  <div key={i} className="flex gap-2 items-start border-l-2 border-blue-500/20 pl-3 py-1 bg-white/5 rounded-r-md">
-                    <ChevronRight className="w-3 h-3 mt-1 text-blue-900 shrink-0" />
-                    <span className={`break-all whitespace-pre-wrap ${line.startsWith('❌') ? 'text-red-400' : 'text-emerald-400'}`}>
-                      {line}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setMode(mode === 'web' ? 'logic' : 'web')}
+              className="text-[10px] bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 font-bold transition-all"
+            >
+              Switch to {mode === 'web' ? 'Logic' : 'Web'}
+            </button>
+            {mode === 'logic' && (
+              <button onClick={runLogicCode} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1">
+                <Play className="w-3 h-3 fill-current" /> RUN
+              </button>
+            )}
+            <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-2 text-slate-400 hover:text-white transition-colors">
+              <Maximize2 className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* --- Footer Status Bar --- */}
-        <div className="bg-[#0f172a] border-t border-white/5 px-6 py-2 flex justify-between items-center text-[10px] text-slate-600 font-mono">
-           <div className="flex gap-4">
-             <span className="flex items-center gap-1"><Cpu className="w-3 h-3"/> V8_CORE</span>
-             <span>Ln 1, Col 1</span>
-           </div>
-           <span className="text-blue-900 font-black">LUVIA_SYSTEM_STABLE</span>
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+          {/* Editor Section */}
+          <div className="flex-1 flex flex-col border-r border-white/5 bg-[#050814]">
+            {mode === 'web' && (
+              <div className="flex border-b border-white/5 bg-[#0a0f1e]">
+                <button onClick={() => setActiveTab('html')} className={`flex-1 py-3 text-[10px] font-bold border-b-2 transition-all ${activeTab === 'html' ? 'border-orange-500 text-orange-400 bg-orange-500/5' : 'border-transparent text-slate-500'}`}>HTML</button>
+                <button onClick={() => setActiveTab('css')} className={`flex-1 py-3 text-[10px] font-bold border-b-2 transition-all ${activeTab === 'css' ? 'border-blue-500 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-500'}`}>CSS</button>
+                <button onClick={() => setActiveTab('js')} className={`flex-1 py-3 text-[10px] font-bold border-b-2 transition-all ${activeTab === 'js' ? 'border-yellow-500 text-yellow-400 bg-yellow-500/5' : 'border-transparent text-slate-500'}`}>JS</button>
+              </div>
+            )}
+            
+            <div className="flex-1 overflow-auto p-4 font-mono text-sm">
+              <Editor
+                value={activeTab === 'html' ? html : activeTab === 'css' ? css : js}
+                onValueChange={(val: string) => {
+                  if (activeTab === 'html') setHtml(val);
+                  else if (activeTab === 'css') setCss(val);
+                  else setJs(val);
+                }}
+                highlight={(code: string) => highlight(code, activeTab === 'html' ? languages.markup : activeTab === 'css' ? languages.css : languages.javascript)}
+                padding={10}
+                style={{ minHeight: '100%', outline: 'none' }}
+              />
+            </div>
+          </div>
+
+          {/* Output Section */}
+          <div className="flex-1 bg-[#020617] relative">
+            {mode === 'web' ? (
+              <iframe title="preview" srcDoc={srcDoc} className="w-full h-full border-none bg-white" />
+            ) : (
+              <div className="h-full flex flex-col bg-black/50">
+                <div className="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-2"><Terminal className="w-3 h-3"/> CONSOLE</span>
+                  <button onClick={() => setLogs([])} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3"/></button>
+                </div>
+                <div className="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2">
+                  {logs.map((log, i) => (
+                    <div key={i} className="flex gap-2 text-emerald-400 border-l border-emerald-500/30 pl-3 bg-white/5 p-2 rounded-r-lg">
+                      <ChevronRight className="w-3 h-3 shrink-0 mt-0.5 text-emerald-900" />
+                      <span className="whitespace-pre-wrap">{log}</span>
+                    </div>
+                  ))}
+                  {logs.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center opacity-10">
+                       <Terminal className="w-12 h-12 mb-2" />
+                       <div className="uppercase font-black text-xl">Output Ready</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-[#0f172a] border-t border-white/5 px-4 py-2 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+          <span className="flex items-center gap-1 text-blue-500"><Cpu className="w-3 h-3" /> LUVIA_CORE_V2.1</span>
+          <span>{mode.toUpperCase()} MODE ACTIVE</span>
         </div>
       </div>
     </div>
