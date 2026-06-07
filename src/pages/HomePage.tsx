@@ -20,11 +20,6 @@ export default function HomePage() {
 
   useEffect(() => { 
     loadCourses(); 
-    // التأكد من ظهور نافذة التهنئة مرة واحدة
-    const hasSeenEid = localStorage.getItem('eid_2026_seen');
-    if (!hasSeenEid) {
-      setTimeout(() => setShowEidModal(true), 1500);
-    }
   }, []);
 
   useEffect(() => {
