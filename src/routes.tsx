@@ -13,6 +13,7 @@ import PlayLuvia from './pages/PlayLuvia';
 import LuviaPad from './pages/LuviaPad';
 import ContactUs from "./pages/Contact"; 
 import type { ReactNode } from 'react';
+import TokenLinkPage from './pages/TokenLink';
 
 // هنا ضفنا isAdmin عشان الـ TypeScript يوافق عليها
 interface RouteConfig {
@@ -39,6 +40,11 @@ const routes: RouteConfig[] = [
     name: 'Course Details',
     path: '/courses/:courseId',
     element: <CourseDetailsPage />,
+  },
+  {
+    name: 'TokenLink',
+    path: '/tokens/:tokenId',
+    element: <TokenLinkPage />,
   },
   {
     name: 'Login',
