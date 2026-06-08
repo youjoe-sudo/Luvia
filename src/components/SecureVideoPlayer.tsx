@@ -1,229 +1,128 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { ShieldCheck } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface SecureVideoPlayerProps {
   videoId: string;
-  watermarkText?: string;
-  onSecurityViolation?: () => void;
+  studentName: string;
+  studentPhone: string;
 }
 
-export default function SecureVideoPlayer({ 
-  videoId, 
-  watermarkText = 'Luvia Platform',
-  onSecurityViolation 
-}: SecureVideoPlayerProps) {
+export default function SecureVideoPlayer({ videoId, studentName, studentPhone }: SecureVideoPlayerProps) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [securityWarning, setSecurityWarning] = useState(false);
-  const [warningMessage, setWarningMessage] = useState('');
 
+  // حالة مكان العلامة المائية عشان تتحرك
+  const [watermarkPos, setWatermarkPos] = useState({ top: 20, left: 20 });
+
+  // تحريك العلامة المائية كل 3 ثواني لمكان عشوائي (عشان لو بيسجل الشاشة)
   useEffect(() => {
-    // منع النقر بزر الفأرة الأيمن
-    // Prevent right-click
+    const moveWatermark = () => {
+      setWatermarkPos({
+        top: Math.floor(Math.random() * 70) + 10, // من 10% لـ 80%
+        left: Math.floor(Math.random() * 70) + 10,
+      });
+    };
+    const interval = setInterval(moveWatermark, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // حماية إضافية: منع الكليك يمين واختصارات الـ DevTools
+  useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      showWarning(t('النقر بزر الفأرة الأيمن غير مسموح', 'Right-click is not allowed'));
-      return false;
+      showWarning();
     };
 
-    // منع اختصارات لوحة المفاتيح للتسجيل والتقاط الشاشة
-    // Prevent keyboard shortcuts for recording and screenshots
     const handleKeyDown = (e: KeyboardEvent) => {
-      // منع F12 وأدوات المطورين
-      // Prevent F12 and developer tools
+      // منع F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
       if (
         e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
-        (e.ctrlKey && e.key === 'U')
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+        (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's'))
       ) {
         e.preventDefault();
-        showWarning(t('أدوات المطورين غير مسموحة أثناء المشاهدة', 'Developer tools are not allowed during playback'));
-        if (onSecurityViolation) onSecurityViolation();
-        return false;
-      }
-
-      // منع Print Screen
-      // Prevent Print Screen
-      if (e.key === 'PrintScreen') {
-        e.preventDefault();
-        showWarning(t('لقطات الشاشة غير مسموحة', 'Screenshots are not allowed'));
-        if (onSecurityViolation) onSecurityViolation();
-        return false;
-      }
-
-      // منع اختصارات التسجيل الشائعة
-      // Prevent common recording shortcuts
-      if (
-        (e.ctrlKey && e.shiftKey && e.key === 'R') || // OBS
-        (e.altKey && e.key === 'R') || // Windows Game Bar
-        (e.metaKey && e.shiftKey && e.key === '5') // macOS screenshot
-      ) {
-        e.preventDefault();
-        showWarning(t('تسجيل الشاشة غير مسموح', 'Screen recording is not allowed'));
-        if (onSecurityViolation) onSecurityViolation();
-        return false;
+        showWarning();
       }
     };
 
-    // كشف فقدان التركيز (التبديل إلى نافذة أخرى)
-    // Detect focus loss (switching to another window)
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // إيقاف الفيديو عند التبديل إلى نافذة أخرى
-        // Pause video when switching to another window
-        const iframe = containerRef.current?.querySelector('iframe');
-        if (iframe) {
-          // إرسال أمر إيقاف إلى iframe
-          // Send pause command to iframe
-          iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-        }
-        showWarning(t('تم إيقاف الفيديو - لا تغادر النافذة أثناء المشاهدة', 'Video paused - Do not leave the window during playback'));
-      }
-    };
-
-    // كشف تغيير حجم النافذة (قد يشير إلى تسجيل)
-    // Detect window resize (may indicate recording)
-    let resizeTimeout: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        // تحذير عند تغيير حجم النافذة بشكل مفاجئ
-        // Warning on sudden window resize
-        if (Math.abs(window.innerWidth - screen.width) > 100) {
-          showWarning(t('تم اكتشاف تغيير في حجم النافذة', 'Window resize detected'));
-        }
-      }, 500);
-    };
-
-    // منع السحب والإفلات
-    // Prevent drag and drop
-    const handleDragStart = (e: DragEvent) => {
-      e.preventDefault();
-      return false;
-    };
-
-    // منع التحديد
-    // Prevent text selection
-    const handleSelectStart = (e: Event) => {
-      e.preventDefault();
-      return false;
-    };
-
-    // إضافة المستمعين
-    // Add event listeners
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('resize', handleResize);
-    document.addEventListener('dragstart', handleDragStart);
-    document.addEventListener('selectstart', handleSelectStart);
 
-    // كشف أدوات المطورين المفتوحة
-    // Detect open developer tools
-    const devToolsCheck = setInterval(() => {
-      const widthThreshold = window.outerWidth - window.innerWidth > 160;
-      const heightThreshold = window.outerHeight - window.innerHeight > 160;
-      
-      if (widthThreshold || heightThreshold) {
-        showWarning(t('يرجى إغلاق أدوات المطورين', 'Please close developer tools'));
-        if (onSecurityViolation) onSecurityViolation();
-      }
-    }, 1000);
-
-    // التنظيف
-    // Cleanup
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('dragstart', handleDragStart);
-      document.removeEventListener('selectstart', handleSelectStart);
-      clearInterval(devToolsCheck);
-      clearTimeout(resizeTimeout);
     };
-  }, [t, onSecurityViolation]);
+  }, []);
 
-  const showWarning = (message: string) => {
-    setWarningMessage(message);
-    setSecurityWarning(true);
-    setTimeout(() => setSecurityWarning(false), 5000);
+  const showWarning = (msg?: string) => {
+    toast({
+      title: t('تحذير أمني 🚨', 'Security Warning 🚨'),
+      description: msg || t('غير مسموح بهذا الإجراء. الجلسة مشفرة.', 'Action not allowed. Session is encrypted.'),
+      variant: 'destructive',
+    });
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      {/* تحذير الأمان */}
-      {/* Security warning */}
-      {securityWarning && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{warningMessage}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* إشعار الحماية */}
-      {/* Protection notice */}
-      <div className="mb-4 p-3 bg-muted rounded-lg flex items-center gap-2 text-sm">
-        <Shield className="h-4 w-4 text-primary" />
-        <span className="text-muted-foreground">
-          {t(
-            'هذا الفيديو محمي. التسجيل أو التقاط الشاشة غير مسموح.',
-            'This video is protected. Recording or screenshots are not allowed.'
-          )}
+    <div 
+      ref={containerRef}
+      className="relative w-full aspect-video bg-[#020617] rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-slate-800/50"
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {/* شريط الحماية العلوي (زي اللي في الصورة عندك) */}
+      <div className="absolute top-0 left-0 w-full h-10 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center gap-2 border-b border-emerald-500/20 text-emerald-500 pointer-events-none">
+        <ShieldCheck className="w-5 h-5" />
+        <span className="text-sm font-bold tracking-wide">
+          {t('جلسة مشاهدة مشفرة ومراقبة. يمنع التسجيل أو النسخ.', 'Encrypted and monitored session. Recording or copying is prohibited.')}
         </span>
       </div>
 
-      {/* مشغل الفيديو */}
-      {/* Video player */}
-      <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-        {/* العلامة المائية */}
-        {/* Watermark */}
-        <div 
-          className="absolute top-4 right-4 z-10 text-white/30 text-sm font-bold pointer-events-none select-none"
-          style={{
-            textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-          }}
-        >
-          {watermarkText}
-        </div>
+      {/* 🚀 الدرع الخفي لقتل زرار جوجل درايف (Pop-out Blocker) 🚀 */}
+      {/* موجود فوق يمين ومغطي مساحة الزرار بالظبط */}
+      <div 
+        className="absolute top-10 right-0 w-[80px] h-[80px] z-[60]"
+        style={{ cursor: 'not-allowed' }}
+        title={t('ممنوع فتح الفيديو خارج المنصة', 'Pop-out disabled')}
+        onClick={(e) => {
+          e.stopPropagation();
+          showWarning(t('عفواً، لا يمكن فتح الفيديو خارج منصة لوفيا', 'Cannot open video outside Luvia'));
+        }}
+      />
 
-        {/* Google Drive Video Player */}
+      {/* العلامة المائية الديناميكية المتحركة */}
+      <motion.div
+        animate={{ 
+          top: `${watermarkPos.top}%`, 
+          left: `${watermarkPos.left}%`,
+          opacity: [0.15, 0.3, 0.15]
+        }}
+        transition={{ 
+          top: { duration: 2.5, ease: "easeInOut" },
+          left: { duration: 2.5, ease: "easeInOut" },
+          opacity: { duration: 4, repeat: Infinity }
+        }}
+        className="absolute z-40 pointer-events-none flex flex-col items-center justify-center -rotate-[15deg]"
+      >
+        <span className="text-white/20 font-black text-2xl md:text-4xl tracking-widest drop-shadow-lg select-none">
+          {studentPhone || studentName}
+        </span>
+        <span className="text-white/10 font-bold text-sm md:text-xl tracking-widest select-none mt-1">
+          Luvia Platform
+        </span>
+      </motion.div>
+
+      {/* مشغل جوجل درايف */}
+      <div className="absolute inset-0 pt-10"> {/* pt-10 عشان ينزل تحت شريط الحماية */}
         <iframe
           src={`https://drive.google.com/file/d/${videoId}/preview`}
           className="w-full h-full"
-          allow="autoplay"
-          style={{
-            border: 'none',
-            pointerEvents: 'auto',
-          }}
-          title="Secure Video Player"
+          allow="autoplay; fullscreen"
+          style={{ border: 'none' }}
+          title="Luvia Secure Player"
         />
-
-        {/* طبقة حماية شفافة */}
-        {/* Transparent protection layer */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'transparent',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-          }}
-        />
-      </div>
-
-      {/* تحذير إضافي */}
-      {/* Additional warning */}
-      <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-        <p className="text-sm text-amber-700 dark:text-amber-400">
-          ⚠️ {t(
-            'تنبيه: أي محاولة لتسجيل أو تحميل هذا الفيديو ستؤدي إلى إيقاف حسابك.',
-            'Warning: Any attempt to record or download this video will result in account suspension.'
-          )}
-        </p>
       </div>
     </div>
   );
