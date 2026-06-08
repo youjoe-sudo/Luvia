@@ -162,9 +162,10 @@ export async function getCourseWithLessons(courseId: string) {
   if (courseError) throw courseError;
   if (!course) return null;
   
+  // التعديل هنا: جلب الحصص ومعها الملفات المرفقة الخاصة بها من جدول lesson_attachments التابع لها
   const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
-    .select('*')
+    .select('*, lesson_attachments(*)')
     .eq('course_id', courseId)
     .order('order_index', { ascending: true });
   
@@ -402,6 +403,7 @@ export async function checkUserOwnsCourse(userId: string, courseId: string) {
   if (error) throw error;
   return !!data;
 }
+
 // تحديث واجب موجود
 export const updateAssignment = async (id: string, data: Partial<Assignment>) => {
   const { data: updated, error } = await supabase
@@ -425,6 +427,7 @@ export const deleteAssignment = async (id: string) => {
   if (error) throw error;
   return true;
 };
+
 // ==================== Assignment APIs ====================
 export async function getAssignmentsByLesson(lessonId: string) {
   const { data, error } = await supabase
@@ -481,7 +484,6 @@ export async function createAssignment(
   console.log('createAssignment called with:', assignment);
   
   // إنشاء الواجب أولاً
-  // Create assignment first
   const { questions, ...assignmentData } = assignment;
   
   console.log('Inserting assignment data:', assignmentData);
@@ -504,7 +506,6 @@ export async function createAssignment(
   console.log('Assignment created:', assignmentRecord);
 
   // إذا كانت هناك أسئلة، أضفها
-  // If there are questions, add them
   if (questions && questions.length > 0) {
     console.log('Adding questions:', questions.length);
     
@@ -514,7 +515,6 @@ export async function createAssignment(
       console.log(`Creating question ${i + 1}:`, question);
       
       // إنشاء السؤال
-      // Create question
       const { data: questionRecord, error: questionError } = await supabase
         .from('assignment_questions')
         .insert({
@@ -539,7 +539,6 @@ export async function createAssignment(
       console.log('Question created:', questionRecord);
 
       // إنشاء الخيارات
-      // Create options
       for (let j = 0; j < question.options.length; j++) {
         const option = question.options[j];
         const isCorrect = question.correct_answers.includes(j);
@@ -573,7 +572,6 @@ export async function submitAssignment(
   userId: string,
   answers: { question_id: string; selected_option_ids: string[] }[]
 ) {
-  // Get assignment with questions
   const assignment = await getAssignmentWithQuestions(assignmentId);
   if (!assignment) throw new Error('Assignment not found');
   
@@ -702,7 +700,6 @@ export async function getCourseProgress(userId: string, courseId: string) {
 }
 
 // الحصول على تقدم جميع الطلاب في درس معين (للمدراء)
-// Get all students' progress for a specific lesson (for admins)
 export async function getLessonProgressForAdmin(lessonId: string) {
   const { data, error } = await supabase
     .from('lesson_progress')
@@ -718,9 +715,7 @@ export async function getLessonProgressForAdmin(lessonId: string) {
 }
 
 // الحصول على تقدم جميع الطلاب في كورس معين (للمدراء)
-// Get all students' progress for a specific course (for admins)
 export async function getCourseProgressForAdmin(courseId: string) {
-  // First, get all students enrolled in the course
   const { data: enrolledStudents, error: enrollError } = await supabase
     .from('user_courses')
     .select('user_id, profiles!user_courses_user_id_fkey(id, name, email)')
@@ -728,7 +723,6 @@ export async function getCourseProgressForAdmin(courseId: string) {
 
   if (enrollError) throw enrollError;
 
-  // Then get all progress records for this course
   const { data: progressData, error: progressError } = await supabase
     .from('lesson_progress')
     .select(`
@@ -739,7 +733,6 @@ export async function getCourseProgressForAdmin(courseId: string) {
 
   if (progressError) throw progressError;
 
-  // Combine the data
   return {
     students: enrolledStudents?.map((item: any) => ({
       id: item.profiles.id,
@@ -916,7 +909,7 @@ export async function getAllCertificates() {
   return Array.isArray(data) ? data : [];
 }
 
-// دالة التحقق من الشهادة / Certificate verification function
+// دالة التحقق من الشهادة
 export async function verifyCertificate(certificateId: string) {
   const { data, error } = await supabase
     .from('certificates')
@@ -936,4 +929,3 @@ export async function verifyCertificate(certificateId: string) {
   if (error) throw error;
   return data;
 }
-

@@ -29,7 +29,6 @@ import {
   BookOpen,
   Lock,
   CheckCircle,
-  Play,
   Info
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +64,9 @@ export default function StudentCourseViewPage() {
   const [assignmentSubmitting, setAssignmentSubmitting] = useState(false);
   const [assignmentSubmission, setAssignmentSubmission] = useState<any>(null);
   const [showResult, setShowResult] = useState(false);
+  
+  // 👇 حالة جديدة لفتح وإغلاق عارض الـ PDF
+  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!courseId || !user) return;
@@ -134,9 +136,7 @@ export default function StudentCourseViewPage() {
 
   if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center"><Skeleton className="w-[80%] h-32 rounded-3xl opacity-20" /></div>;
 
-  const currentPdfUrl = (selectedLesson as any)?.pdf_url;
-
-  return (
+const currentPdfUrl = (selectedLesson as any)?.lesson_attachments?.[0]?.file_url;  return (
     <div className="min-h-screen bg-[#020617] text-slate-50 selection:bg-blue-500/30">
       {/* تأثير إضاءة خلفي (Glow Effect) */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none opacity-50" />
@@ -190,7 +190,6 @@ export default function StudentCourseViewPage() {
                   {selectedLesson.google_drive_video_id ? (
                     <SecureVideoPlayer 
                       videoId={selectedLesson.google_drive_video_id}
-                      // نمرر بيانات المستخدم الحالية للـ Watermark
                       studentName={user?.user_metadata?.full_name || user?.email || 'طالب لوفيا'}
                       studentPhone={user?.user_metadata?.phone || ''}
                     />
@@ -259,7 +258,7 @@ export default function StudentCourseViewPage() {
                   </Card>
 
                   {/* كارت الملحقات */}
-                  <Card className={`bg-slate-900/40 border border-white/5 backdrop-blur-lg rounded-2xl p-6 flex items-center justify-between transition-colors ${(!currentPdfUrl) ? 'opacity-60 grayscale' : 'cursor-pointer hover:border-white/10'}`}>
+                  <Card className={`bg-slate-900/40 border border-white/5 backdrop-blur-lg rounded-2xl p-6 flex items-center justify-between transition-colors ${(!currentPdfUrl) ? 'opacity-60 grayscale' : 'hover:border-white/10'}`}>
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
                           <BookOpen className="w-6 h-6" />
@@ -267,14 +266,18 @@ export default function StudentCourseViewPage() {
                         <div>
                             <h4 className="font-bold text-white text-sm">{t('الملحقات', 'Resources')}</h4>
                             <p className="text-[10px] text-slate-400 mt-0.5">
-                                {currentPdfUrl ? t('تحميل ملخص PDF', 'Download PDF') : t('لم يتم رفع ملفات', 'No files uploaded')}
+                                {currentPdfUrl ? t('عرض ملخص الـ PDF', 'View PDF') : t('لم يتم رفع ملفات', 'No files uploaded')}
                             </p>
                         </div>
                     </div>
+                    {/* 👇 التعديل هنا: زرار بيفتح الـ Dialog بدل الـ a tag */}
                     {currentPdfUrl ? (
-                        <a href={currentPdfUrl} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+                        <button 
+                          onClick={() => setIsPdfViewerOpen(true)} 
+                          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors cursor-pointer"
+                        >
                             <ChevronRight className="w-4 h-4 text-slate-300" />
-                        </a>
+                        </button>
                     ) : (
                         <Info className="w-4 h-4 text-slate-600" />
                     )}
@@ -286,7 +289,47 @@ export default function StudentCourseViewPage() {
         </div>
       </div>
 
-      {/* المودال الخاص بالواجبات (بلمسات Glassmorphism) */}
+      {/* 👇 المودال الجديد لعرض الملحق (PDF) مع الـ Watermark */}
+      <Dialog open={isPdfViewerOpen} onOpenChange={setIsPdfViewerOpen}>
+        <DialogContent className="max-w-5xl w-full h-[90vh] bg-slate-950/95 backdrop-blur-2xl border border-white/10 p-0 flex flex-col overflow-hidden rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+          <div className="p-4 border-b border-white/5 bg-slate-900/50 flex flex-row items-center justify-between z-20 relative">
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                 <BookOpen className="w-5 h-5 text-blue-400" />
+               </div>
+               <DialogTitle className="text-lg font-bold text-white">{t('عرض الملحق', 'View Document')}</DialogTitle>
+            </div>
+            <DialogClose asChild>
+              <Button variant="ghost" className="w-10 h-10 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-colors">
+                <X className="w-5 h-5" />
+              </Button>
+            </DialogClose>
+          </div>
+          
+          <div 
+            className="flex-1 relative bg-slate-900 overflow-hidden select-none" 
+            onContextMenu={(e) => e.preventDefault()} // منع كليك يمين
+          >
+            {/* الووتر مارك (Watermark) المكررة على الشاشة كلها */}
+            <div className="absolute inset-0 z-50 pointer-events-none flex flex-wrap items-center justify-center overflow-hidden opacity-[0.05]">
+              {Array.from({ length: 40 }).map((_, i) => (
+                <div key={i} className="transform -rotate-45 text-white text-2xl font-black p-10 whitespace-nowrap">
+                  {user?.user_metadata?.full_name || user?.email} <br /> {user?.user_metadata?.phone || ''}
+                </div>
+              ))}
+            </div>
+            
+            {/* عرض الـ PDF (إخفاء الـ Toolbar لو المتصفح بيدعم ده) */}
+            <iframe 
+               src={`${currentPdfUrl}#toolbar=0&navpanes=0&scrollbar=0`} 
+               className="w-full h-full border-none relative z-10"
+               title="Secure PDF Viewer"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* المودال الخاص بالواجبات */}
       <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
         <DialogContent className="max-w-4xl w-full h-[100dvh] md:h-[85vh] bg-slate-950/95 backdrop-blur-2xl border-none md:border md:border-white/10 p-0 flex flex-col overflow-hidden md:rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
           <div className="p-5 md:p-8 border-b border-white/5 bg-slate-900/50 flex items-center justify-between">
