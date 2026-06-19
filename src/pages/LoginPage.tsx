@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { motion } from 'framer-motion'; // ضفنا فريمير موشن للحركات الرايقة
+import { motion } from 'framer-motion';
 import { ShieldCheck, User, Lock, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
@@ -49,98 +49,114 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] relative overflow-hidden p-4">
-      {/* دوائر النيون في الخلفية */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
+    <div className="min-h-screen flex items-center justify-center bg-[#030712] relative overflow-hidden p-4 font-sans antialiased selection:bg-blue-500/30 selection:text-blue-200">
+      
+      {/* --- BACKGROUND AMBIENT NEON GLOWS --- */}
+      <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_8s_ease-in-out_infinite]" />
+      <div className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_10s_ease-in-out_infinite]" />
+      
+      {/* نقش إسلامي ناعم جداً ممتد مدمج مع الخلفية الداكنة */}
+      <div className="absolute inset-0 opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/islamic-art.png')] pointer-events-none mix-blend-overlay" />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
         className="w-full max-w-md z-10"
       >
-        <Card className="bg-white/[0.03] border-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden">
+        <Card className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border-b-2 border-b-blue-500/20 relative">
+          
           <CardHeader className="text-center pt-10 pb-6">
             <motion.div 
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center border border-blue-500/30 mx-auto mb-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="w-14 h-14 bg-blue-500/5 rounded-xl flex items-center justify-center border border-blue-500/10 mx-auto mb-5 shadow-inner"
             >
-              <ShieldCheck className="w-8 h-8 text-blue-400" />
+              <ShieldCheck className="w-6 h-6 text-blue-400" />
             </motion.div>
-            <div className="text-5xl font-black tracking-tighter text-white mb-2 drop-shadow-lg">
+            
+            <div className="text-4xl font-extrabold tracking-tight text-white mb-2 font-sans">
               Luvia<span className="text-blue-500">.</span>
             </div>
-            <CardTitle className="text-slate-100 text-xl font-bold">{t('تسجيل الدخول', 'Login')}</CardTitle>
-            <CardDescription className="text-slate-400">
+            
+            <CardTitle className="text-slate-200 text-lg font-bold">{t('تسجيل الدخول', 'Login')}</CardTitle>
+            <CardDescription className="text-slate-500 text-xs mt-1">
               {t('مرحباً بك مجدداً في رحلتك التعليمية', 'Welcome back to your learning journey')}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="px-8 pb-10">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <CardContent className="px-6 sm:px-8 pb-10">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-                  <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400 rounded-2xl">
-                    <AlertDescription>{error}</AlertDescription>
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
+                  <Alert variant="destructive" className="bg-red-500/5 border-red-500/10 text-red-400 rounded-xl py-3 px-4">
+                    <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
                   </Alert>
                 </motion.div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-300 ml-1 flex items-center gap-2">
-                  <User className="w-4 h-4" /> {t('اسم المستخدم', 'Username')}
+              {/* Username Input Container */}
+              <div className="space-y-2 text-right rtl:text-right">
+                <Label htmlFor="username" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('اسم المستخدم', 'Username')}</span>
+                  <User className="w-3.5 h-3.5 text-slate-500" />
                 </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all"
-                  placeholder="john_doe"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="password" className="text-slate-300 ml-1 flex items-center gap-2">
-                    <Lock className="w-4 h-4" /> {t('الباسوورد', 'Password')}
-                  </Label>
+                <div className="relative group">
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 focus:bg-slate-950/90 transition-all px-4"
+                    placeholder="john_doe"
+                  />
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-14 bg-white/5 border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all"
-                  placeholder="••••••••"
-                />
               </div>
 
+              {/* Password Input Container */}
+              <div className="space-y-2 text-right rtl:text-right">
+                <Label htmlFor="password" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('الباسوورد', 'Password')}</span>
+                  <Lock className="w-3.5 h-3.5 text-slate-500" />
+                </Label>
+                <div className="relative group">
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20 focus:bg-slate-950/90 transition-all px-4"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
               <Button 
                 type="submit" 
-                className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] disabled:opacity-50"
+                className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/5 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-2 cursor-pointer"
                 disabled={loading}
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {t('جاري الدخول...', 'Logging in...')}
+                  <div className="flex items-center gap-2 justify-center">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="text-xs font-medium">{t('جاري الدخول...', 'Logging in...')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    {t('تسجيل الدخول', 'Login')}
-                    <ArrowRight className="w-5 h-5" />
+                    <span>{t('تسجيل الدخول', 'Login')}</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                   </div>
                 )}
               </Button>
 
-              <div className="text-center text-sm text-slate-500 pt-2">
+              {/* Bottom Navigation */}
+              <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-950/60 mt-4">
                 {t('ليس لديك حساب؟', "Don't have an account?")}{' '}
-                <Link to="/register" className="text-blue-400 hover:text-blue-300 font-bold underline-offset-4 hover:underline transition-colors">
+                <Link to="/register" className="text-blue-400 hover:text-blue-300 font-semibold underline-offset-4 hover:underline transition-colors ml-1">
                   {t('إنشاء حساب جديد', 'Create Account')}
                 </Link>
               </div>

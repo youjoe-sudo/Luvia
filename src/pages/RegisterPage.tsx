@@ -36,128 +36,155 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const { error: signUpError } = await signUpWithUsername(username, password);
+    try {
+      const { error: signUpError } = await signUpWithUsername(username, password);
+      
+      if (signUpError) {
+        if (signUpError.message?.includes('unique constraint')) {
+          setError(t('اسم المستخدم ده موجود قبل كده، اختار اسم تاني', 'Username already exists'));
+        } else {
+          setError(signUpError.message);
+        }
+        setLoading(false);
+        return;
+      }
 
-    if (signUpError) {
-      setError(t('فشل إنشاء الحساب. اسم المستخدم قد يكون مستخدماً بالفعل (جرب تشيل المسافات والعلامات وخلي الاسم كله بالانجليزي حروف صغيرة)', 'Username may already exist or invalid format'));
+      await signInWithUsername(username, password);
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
       setLoading(false);
-      return;
-    }
-
-    const { error: signInError } = await signInWithUsername(username, password);
-    if (signInError) {
-      navigate('/login');
-    } else {
-      navigate('/dashboard');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] relative overflow-hidden p-4">
-      {/* دوائر النيون الخلفية - نفس ستايل اللوجن */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full" />
+    <div className="min-h-screen flex items-center justify-center bg-[#030712] relative overflow-hidden p-4 font-sans antialiased selection:bg-purple-500/30 selection:text-purple-200">
+      
+      {/* --- BACKGROUND AMBIENT NEON GLOWS --- */}
+      <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_10s_ease-in-out_infinite]" />
+      <div className="absolute bottom-[-15%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_8s_ease-in-out_infinite]" />
+      
+      {/* نقش إسلامي مودرن مدمج مع الخلفية الداكنة */}
+      <div className="absolute inset-0 opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/islamic-art.png')] pointer-events-none mix-blend-overlay" />
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
         className="w-full max-w-md z-10"
       >
-        <Card className="bg-white/[0.03] border-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden">
+        <Card className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border-b-2 border-b-purple-500/20 relative">
+          
           <CardHeader className="text-center pt-10 pb-6">
             <motion.div 
-              initial={{ rotate: -10 }}
-              animate={{ rotate: 0 }}
-              className="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center border border-purple-500/30 mx-auto mb-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="w-14 h-14 bg-purple-500/5 rounded-xl flex items-center justify-center border border-purple-500/10 mx-auto mb-5 shadow-inner"
             >
-              <UserPlus className="w-8 h-8 text-purple-400" />
+              <UserPlus className="w-6 h-6 text-purple-400" />
             </motion.div>
-            <div className="text-5xl font-black tracking-tighter text-white mb-2">
+            
+            <div className="text-4xl font-extrabold tracking-tight text-white mb-2 font-sans">
               Luvia<span className="text-purple-500">.</span>
             </div>
-            <CardTitle className="text-slate-100 text-xl font-bold">{t('إنشاء حساب جديد', 'Create Account')}</CardTitle>
-            <CardDescription className="text-slate-400">
-              {t('ابدأ رحلتك التعليمية معنا اليوم', 'Start your learning journey with us today')}
+            
+            <CardTitle className="text-slate-200 text-lg font-bold">{t('إنشاء حساب جديد', 'Create Account')}</CardTitle>
+            <CardDescription className="text-slate-500 text-xs mt-1">
+              {t('انضم إلينا اليوم وابدأ رحلتك التعليمية المتقدمة', 'Join us today and unlock advanced pathways')}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="px-8 pb-10">
+          <CardContent className="px-6 sm:px-8 pb-10">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                  <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400 rounded-2xl">
-                    <AlertDescription className="text-xs leading-relaxed">{error}</AlertDescription>
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
+                  <Alert variant="destructive" className="bg-red-500/5 border-red-500/10 text-red-400 rounded-xl py-3 px-4">
+                    <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
                   </Alert>
                 </motion.div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-300 ml-1 flex items-center gap-2">
-                  <User className="w-4 h-4" /> {t('اسم المستخدم', 'Username')}
+              {/* Username Input Container */}
+              <div className="space-y-2 text-right rtl:text-right">
+                <Label htmlFor="username" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('اسم المستخدم', 'Username')}</span>
+                  <User className="w-3.5 h-3.5 text-slate-500" />
                 </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="h-12 bg-white/5 border-white/10 rounded-2xl text-white focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
-                  placeholder="username_123"
-                />
+                <div className="relative group">
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 focus:bg-slate-950/90 transition-all px-4"
+                    placeholder="john_doe"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-300 ml-1 flex items-center gap-2">
-                  <Lock className="w-4 h-4" /> {t('الباسوورد', 'Password')}
+              {/* Password Input Container */}
+              <div className="space-y-2 text-right rtl:text-right">
+                <Label htmlFor="password" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('الباسوورد', 'Password')}</span>
+                  <Lock className="w-3.5 h-3.5 text-slate-500" />
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-12 bg-white/5 border-white/10 rounded-2xl text-white focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
-                  placeholder="••••••••"
-                />
+                <div className="relative group">
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 focus:bg-slate-950/90 transition-all px-4"
+                    placeholder="••••••••"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-300 ml-1 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4" /> {t('تأكيد الباسوورد', 'Confirm Password')}
+              {/* Confirm Password Input Container */}
+              <div className="space-y-2 text-right rtl:text-right">
+                <Label htmlFor="confirmPassword" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('تأكيد الباسوورد', 'Confirm Password')}</span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-slate-500" />
                 </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="h-12 bg-white/5 border-white/10 rounded-2xl text-white focus:border-purple-500/50 focus:ring-purple-500/20 transition-all"
-                  placeholder="••••••••"
-                />
+                <div className="relative group">
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 focus:bg-slate-950/90 transition-all px-4"
+                    placeholder="••••••••"
+                  />
+                </div>
               </div>
 
+              {/* Submit Button */}
               <Button 
                 type="submit" 
-                className="w-full h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-lg shadow-lg shadow-purple-600/20 transition-all active:scale-[0.98] disabled:opacity-50 mt-4"
+                className="w-full h-12 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm shadow-md shadow-purple-600/5 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-4 cursor-pointer"
                 disabled={loading}
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
-                    <RefreshCcw className="w-5 h-5 animate-spin" />
-                    {t('جاري الإنشاء...', 'Creating...')}
+                  <div className="flex items-center gap-2 justify-center">
+                    <RefreshCcw className="w-4 h-4 animate-spin" />
+                    <span className="text-xs font-medium">{t('جاري الإنشاء...', 'Creating...')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    {t('إنشاء حساب', 'Create Account')}
-                    <ArrowRight className="w-5 h-5" />
+                    <span>{t('إنشاء حساب', 'Create Account')}</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                   </div>
                 )}
               </Button>
 
-              <div className="text-center text-sm text-slate-500 pt-2">
+              {/* Bottom Navigation */}
+              <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-950/60 mt-4">
                 {t('لديك حساب بالفعل؟', 'Already have an account?')}{' '}
-                <Link to="/login" className="text-purple-400 hover:text-purple-300 font-bold underline-offset-4 hover:underline transition-colors">
+                <Link to="/login" className="text-purple-400 hover:text-purple-300 font-semibold underline-offset-4 hover:underline transition-colors ml-1">
                   {t('تسجيل الدخول', 'Login')}
                 </Link>
               </div>

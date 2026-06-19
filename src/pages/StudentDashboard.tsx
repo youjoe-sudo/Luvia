@@ -5,7 +5,7 @@ import { getUserCourses } from '@/db/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Play, GraduationCap, LayoutGrid } from 'lucide-react';
+import { BookOpen, Play, GraduationCap, LayoutGrid, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -35,12 +35,12 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020617] p-8">
-        <div className="container mx-auto">
-          <Skeleton className="h-10 w-48 mb-8 bg-white/5" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="min-h-screen bg-[#030712] p-6 sm:p-8 space-y-8 antialiased" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="container mx-auto max-w-7xl">
+          <Skeleton className="h-9 w-52 mb-10 bg-slate-900/60 border border-slate-800/40 rounded-xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[400px] rounded-[2.5rem] bg-white/5" />
+              <Skeleton key={i} className="h-[380px] rounded-3xl bg-slate-900/50 border border-slate-800/40 animate-pulse" />
             ))}
           </div>
         </div>
@@ -49,53 +49,60 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white pb-12 relative overflow-hidden">
-      {/* تأثيرات النيون الخلفية */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/5 blur-[120px] -z-10" />
+    <div className="min-h-screen bg-[#030712] text-slate-100 pb-16 relative overflow-hidden font-sans antialiased selection:bg-blue-500/30 selection:text-blue-200" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       
-      <div className="container mx-auto px-4 pt-12">
+      {/* --- BACKGROUND AMBIENT NEON GLOWS --- */}
+      <div className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none -z-10 animate-[pulse_12s_ease-in-out_infinite]" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-600/5 blur-[130px] rounded-full pointer-events-none -z-10 animate-[pulse_10s_ease-in-out_infinite]" />
+
+      <div className="container mx-auto px-4 pt-12 max-w-7xl relative z-10">
+        
+        {/* --- DASHBOARD HEADER --- */}
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-6 text-right rtl:text-right"
         >
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-2 h-8 bg-blue-600 rounded-full" />
-              <h1 className="text-4xl font-black tracking-tight">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 justify-start">
+              <div className="w-2 h-7 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.4)]" />
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                 {t('كورساتي المفعّلة', 'My Enrolled Courses')}
               </h1>
             </div>
-            <p className="text-slate-400 text-lg ml-5">
-              {t('تابع رحلة تعلمك من حيث توقفت', 'Continue your journey where you left off')}
+            <p className="text-xs text-slate-500 mr-5">
+              {t('تابع رحلة تعلمك المتقدمة من حيث توقفت بكل سلاسة', 'Continue your expert learning journey seamlessly right where you left off')}
             </p>
           </div>
           
           <Button 
             onClick={() => navigate('/courses')}
             variant="outline" 
-            className="rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-white h-12 px-6 gap-2"
+            className="rounded-xl border-slate-800 bg-slate-950/40 hover:bg-slate-900/80 text-slate-300 hover:text-white h-11 px-5 gap-2 backdrop-blur-md transition-all text-xs font-bold shrink-0 shadow-sm cursor-pointer"
           >
-            <LayoutGrid className="w-4 h-4" />
+            <LayoutGrid className="w-4 h-4 text-blue-400" />
             {t('تصفح الكورسات المتاحة', 'Browse More')}
           </Button>
         </motion.div>
 
+        {/* --- EMPTY STATE VIEW --- */}
         {courses.length === 0 ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="bg-white/[0.02] border-white/5 backdrop-blur-xl rounded-[3rem] py-20 text-center border-dashed border-2">
-              <CardContent className="flex flex-col items-center">
-                <div className="w-24 h-24 bg-blue-600/10 rounded-full flex items-center justify-center mb-6">
-                  <GraduationCap className="h-12 w-12 text-blue-500" />
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Card className="bg-slate-900/20 border-slate-800/80 backdrop-blur-xl rounded-3xl py-20 text-center border-dashed border-2 relative overflow-hidden max-w-3xl mx-auto shadow-2xl">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-600/[0.02] blur-3xl rounded-full pointer-events-none" />
+              <CardContent className="flex flex-col items-center px-6 relative z-10">
+                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/20 shadow-inner">
+                  <GraduationCap className="h-7 w-7 text-blue-400" />
                 </div>
-                <h2 className="text-2xl font-bold mb-3">{t('مفيش كورسات لسه؟', 'No courses yet?')}</h2>
-                <p className="text-slate-400 mb-8 max-w-md mx-auto">
+                <h2 className="text-lg font-bold text-slate-200 mb-2">{t('مفيش كورسات لسه؟', 'No courses yet?')}</h2>
+                <p className="text-xs text-slate-500 mb-8 max-w-sm mx-auto leading-relaxed">
                   {t('ابدأ دلوقتي وفعل أول كورس ليك علشان تظهر محاضراتك هنا وتستعد للامتحانات', 'Redeem your first course voucher to see your lessons here and start preparing.')}
                 </p>
                 <Button 
-                  size="lg"
+                  size="default"
                   onClick={() => navigate('/courses')}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-10 h-14 rounded-2xl font-black shadow-lg shadow-blue-600/20"
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-8 h-12 rounded-xl font-bold text-xs shadow-md shadow-blue-600/10 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   {t('استكشف الكورسات', 'Explore Courses')}
                 </Button>
@@ -103,46 +110,52 @@ export default function StudentDashboard() {
             </Card>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          /* --- COURSES DISPLAY GRID --- */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
             {courses.map((userCourse, index) => {
               const course = userCourse.courses;
               return (
                 <motion.div
                   key={userCourse.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ duration: 0.3, delay: index * 0.08 }}
                 >
-                  <Card className="group bg-white/[0.03] border-white/10 backdrop-blur-xl rounded-[2.5rem] overflow-hidden hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-                    <div className="relative h-52 overflow-hidden">
+                  <Card className="group bg-slate-900/30 border border-slate-800/80 backdrop-blur-md rounded-2xl overflow-hidden hover:border-blue-500/30 hover:bg-slate-900/70 transition-all duration-300 hover:-translate-y-1.5 shadow-xl flex flex-col h-full relative">
+                    
+                    {/* Thumbnail Showcase Overlay */}
+                    <div className="relative h-48 sm:h-52 overflow-hidden bg-slate-950/40 shrink-0">
                       {course.thumbnail_url ? (
                         <img
                           src={course.thumbnail_url}
                           alt={language === 'ar' ? course.title_ar : course.title_en}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-900/40 to-slate-900 flex items-center justify-center">
-                          <BookOpen className="h-16 w-16 text-blue-500/30" />
+                        <div className="w-full h-full bg-gradient-to-br from-slate-950 to-slate-900 flex items-center justify-center">
+                          <BookOpen className="h-12 w-12 text-slate-700/50" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-60" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#030712]/10 to-transparent opacity-80" />
                     </div>
 
-                    <CardContent className="p-8">
-                      <CardTitle className="text-2xl font-black mb-3 line-clamp-1 group-hover:text-blue-400 transition-colors">
-                        {language === 'ar' ? course.title_ar : course.title_en}
-                      </CardTitle>
-                      
-                      <CardDescription className="line-clamp-2 text-slate-400 text-sm mb-8 leading-relaxed h-10">
-                        {language === 'ar' ? course.description_ar : course.description_en}
-                      </CardDescription>
+                    {/* Content Body Container */}
+                    <CardContent className="p-6 sm:p-7 flex-1 flex flex-col justify-between text-right rtl:text-right">
+                      <div>
+                        <CardTitle className="text-base font-bold mb-2 line-clamp-1 text-slate-200 group-hover:text-white transition-colors">
+                          {language === 'ar' ? course.title_ar : course.title_en}
+                        </CardTitle>
+                        
+                        <CardDescription className="line-clamp-2 text-slate-400 text-xs mb-6 leading-relaxed h-9 font-medium opacity-95">
+                          {language === 'ar' ? course.description_ar : course.description_en}
+                        </CardDescription>
+                      </div>
 
                       <Button
                         onClick={() => navigate(`/course/${course.id}/view`)}
-                        className="w-full h-14 bg-white/5 hover:bg-blue-600 text-white hover:text-white border border-white/10 hover:border-blue-500 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 group/btn shadow-sm"
+                        className="w-full h-11 bg-slate-950/40 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 group-hover:border-blue-500/40 rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 shadow-inner active:scale-[0.98] mt-auto cursor-pointer"
                       >
-                        <Play className="w-5 h-5 fill-current group-hover/btn:animate-pulse" />
+                        <Play className="w-3.5 h-3.5 fill-current opacity-90" />
                         {t('متابعة التعلم', 'Continue Learning')}
                       </Button>
                     </CardContent>

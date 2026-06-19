@@ -2,6 +2,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CourseDetailsPage from './pages/CourseDetailsPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentCourseViewPage from './pages/StudentCourseViewPage';
 import StudentCertificatesPage from './pages/StudentCertificatesPage';
@@ -9,20 +10,23 @@ import VerifyCertificatePage from './pages/VerifyCertificatePage';
 import AdminPanel from './pages/AdminPanel';
 import InstructorPanel from './pages/InstructorPanel';
 import NotFound from './pages/NotFound';
+import TransactionsHistory from './pages/TransactionsHistory';
 import PlayLuvia from './pages/PlayLuvia';
 import LuviaPad from './pages/LuviaPad';
 import ContactUs from "./pages/Contact"; 
+import ProfilePage from './pages/ProfilePage'; // الصفحات الجديدة اللي عملناها
+import TransactionsPage from './pages/TransactionsPage'; // صفحة التحويلات والأكواد
 import type { ReactNode } from 'react';
 import TokenLinkPage from './pages/TokenLink';
 
-// هنا ضفنا isAdmin عشان الـ TypeScript يوافق عليها
+// واجهة إعدادات المسار (Route Configuration Interface)
 interface RouteConfig {
   name: string;
   path: string;
   element: ReactNode;
   visible?: boolean;
-  isAdmin?: boolean; // الخاصية دي اختيارية (Optional)
-  isInstructor?: boolean; // الخاصية دي اختيارية (Optional)
+  isAdmin?: boolean; 
+  isInstructor?: boolean; 
 }
 
 const routes: RouteConfig[] = [
@@ -40,6 +44,16 @@ const routes: RouteConfig[] = [
     name: 'Course Details',
     path: '/courses/:courseId',
     element: <CourseDetailsPage />,
+  },
+  {
+    name: 'Leaderboard',
+    path: '/leaderboard',
+    element: <LeaderboardPage />,
+  },
+  {
+    name: 'Transactions History',
+    path: '/transactions-history',
+    element: <TransactionsHistory />,
   },
   {
     name: 'TokenLink',
@@ -82,10 +96,20 @@ const routes: RouteConfig[] = [
     element: <StudentCourseViewPage />,
   },
   {
+    name: 'Profile',
+    path: '/profile', // مسار صفحة البروفايل والأمان وتغيير الباسورد والفون
+    element: <ProfilePage />,
+  },
+  {
+    name: 'Transactions',
+    path: '/transactions', // مسار صفحة الشحن وتفعيل أكواد الكورسات (Vouchers)
+    element: <TransactionsPage />,
+  },
+  {
     name: 'Admin Panel',
     path: '/admin',
     element: <AdminPanel />,
-    isAdmin: true // دلوقتي الـ TypeScript مش هيطلع Error هنا
+    isAdmin: true 
   },
   {
     name: 'Play Luvia',
@@ -96,18 +120,17 @@ const routes: RouteConfig[] = [
     name: 'Instructor Panel',
     path: '/instructor',
     element: <InstructorPanel />,
-    isInstructor: true // لو حابب تخليها بس للأدمن، أو ممكن تخليها isInstructor: true وتعدل الـ RouteGuard عشان يدعم كمان دور الـ Instructor
-    // ممكن تضيف isAdmin: true هنا كمان لو حابب تحميها
-  },
-  {
-    name: 'Not Found',
-    path: '*',
-    element: <NotFound />,
+    isInstructor: true 
   },
   {
     name: 'Contact',
     path: '/contact',
     element: <ContactUs />,
+  },
+  {
+    name: 'Not Found',
+    path: '*',
+    element: <NotFound />,
   },
 ];
 
