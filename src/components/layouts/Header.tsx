@@ -151,7 +151,7 @@ export function Header() {
 
                     {/* شحن الأكواد (متاح لكل المستخدمين الآن بحسب رغبتك) */}
                     <DropdownMenuItem onClick={() => navigate('/transactions')} className="font-bold py-2.5 text-xs text-slate-300 hover:bg-blue-500/5 hover:text-blue-400 rounded-lg cursor-pointer flex items-center gap-2 flex-row-reverse justify-end">
-                      <ArrowRightLeft className="h-4 w-4 text-blue-500" /> {t('شحن كود (Voucher)', 'Redeem Voucher')}
+                      <ArrowRightLeft className="h-4 w-4 text-blue-500" /> {t('تحويل النقاط', 'Transfare Points')}
                     </DropdownMenuItem>
                     
                     {/* لوحة الشهادات (متاحة لكل المستخدمين الآن) */}
@@ -253,7 +253,7 @@ export function Header() {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={() => navigate('/transactions')} className="font-bold py-2.5 text-xs text-slate-300 hover:bg-blue-500/5 rounded-lg flex items-center gap-2 flex-row-reverse justify-end">
-                  <ArrowRightLeft className="h-4 w-4 text-blue-500" /> {t('شحن الأكواد', 'Vouchers')}
+                  <ArrowRightLeft className="h-4 w-4 text-blue-500" /> {t('تحويل النقاط', 'Vouchers')}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={() => navigate('/my-certificates')} className="font-bold py-2.5 text-xs text-slate-300 hover:bg-blue-500/5 rounded-lg flex items-center gap-2 flex-row-reverse justify-end">

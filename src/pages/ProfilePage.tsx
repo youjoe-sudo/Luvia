@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { User, Mail, Shield, Award, Calendar, ExternalLink, Save, Laptop, Lock, Phone } from 'lucide-react';
+// تم إضافة أيقونة IdCard لتمييز كود الطالب
+import { User, Mail, Shield, Award, Calendar, ExternalLink, Save, Laptop, Lock, Phone, IdCard } from 'lucide-react';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -141,11 +142,26 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 px-4 py-2 rounded-xl">
-          <Shield className="h-5 w-5 text-amber-600" />
-          <div>
-            <span className="text-xs text-muted-foreground block">رصيد النقاط الكلي</span>
-            <span className="text-lg font-extrabold text-amber-600">{(profile as any)?.points || 0} 🪙</span>
+        {/* قسم البطاقات التعريفية الجانبية (تمت إضافة كود الطالب هنا بجانب النقاط بشكل متناسق) */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* كارت كود الطالب المميز */}
+          <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 px-4 py-2 rounded-xl">
+            <IdCard className="h-5 w-5 text-blue-600" />
+            <div>
+              <span className="text-xs text-muted-foreground block">كود الطالب الخاص بك</span>
+              <span className="text-lg font-mono font-extrabold text-blue-600">
+                {(profile as any)?.user_code || (profile as any)?.code || '----'}
+              </span>
+            </div>
+          </div>
+
+          {/* كارت رصيد النقاط الكلي */}
+          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 px-4 py-2 rounded-xl">
+            <Shield className="h-5 w-5 text-amber-600" />
+            <div>
+              <span className="text-xs text-muted-foreground block">رصيد النقاط الكلي</span>
+              <span className="text-lg font-extrabold text-amber-600">{(profile as any)?.points || 0} 🪙</span>
+            </div>
           </div>
         </div>
       </div>
