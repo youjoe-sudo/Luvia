@@ -11,12 +11,14 @@ import { motion } from 'framer-motion';
 import { UserPlus, User, Lock, ShieldCheck, ArrowRight, RefreshCcw } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState(''); // رجعنا لاسم المستخدم المريح
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUpWithEmail, signInWithEmail } = useAuth(); // بنستخدم دالة الإيميل لأن الـ DB مستنية إيميل
+  
+  // رجعنا للمسميات الأصلية بتاعت الـ Context عشان متضربش تني
+  const { signUpWithUsername, signInWithUsername } = useAuth(); 
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -36,11 +38,12 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    // 🛠️ هنا السر: بناخد الاسم اللي كتبه ونلزق فيه إيميل المنصة الجديد تلقائياً
+    // بنهيكل الاسم هنا لـ إيميل لوفيا عشان يروح لقاعدة البيانات متقفل صح
     const formattedEmail = `${username.trim().toLowerCase()}@luvia.com`;
 
     try {
-      const { error: signUpError } = await signUpWithEmail(formattedEmail, password);
+      // بنبعت الـ formattedEmail مكان الـ username للدالة القديمة عشان الـ Context يقبلها
+      const { error: signUpError } = await signUpWithUsername(formattedEmail, password);
       
       if (signUpError) {
         if (signUpError.message?.includes('unique constraint') || signUpError.message?.includes('already registered')) {
@@ -52,8 +55,7 @@ export default function RegisterPage() {
         return;
       }
 
-      // تسجيل دخول تلقائي بنفس الإيميل المهيأ
-      await signInWithEmail(formattedEmail, password);
+      await signInWithUsername(formattedEmail, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
