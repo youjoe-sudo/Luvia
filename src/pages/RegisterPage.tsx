@@ -11,12 +11,12 @@ import { motion } from 'framer-motion';
 import { UserPlus, User, Lock, ShieldCheck, ArrowRight, RefreshCcw } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState(''); // رجعنا لاسم المستخدم المريح
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUpWithEmail, signInWithEmail } = useAuth(); // تم التغيير للاعتماد على الإيميل
+  const { signUpWithEmail, signInWithEmail } = useAuth(); // بنستخدم دالة الإيميل لأن الـ DB مستنية إيميل
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -36,12 +36,15 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    // 🛠️ هنا السر: بناخد الاسم اللي كتبه ونلزق فيه إيميل المنصة الجديد تلقائياً
+    const formattedEmail = `${username.trim().toLowerCase()}@luvia.com`;
+
     try {
-      const { error: signUpError } = await signUpWithEmail(email, password);
+      const { error: signUpError } = await signUpWithEmail(formattedEmail, password);
       
       if (signUpError) {
         if (signUpError.message?.includes('unique constraint') || signUpError.message?.includes('already registered')) {
-          setError(t('البريد الإلكتروني هذا مسجل بالفعل، استخدم بريد آخر', 'Email already exists'));
+          setError(t('اسم المستخدم ده موجود قبل كده، اختار اسم تاني', 'Username already exists'));
         } else {
           setError(signUpError.message);
         }
@@ -49,7 +52,8 @@ export default function RegisterPage() {
         return;
       }
 
-      await signInWithEmail(email, password);
+      // تسجيل دخول تلقائي بنفس الإيميل المهيأ
+      await signInWithEmail(formattedEmail, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
@@ -64,7 +68,7 @@ export default function RegisterPage() {
       <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_10s_ease-in-out_infinite]" />
       <div className="absolute bottom-[-15%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_8s_ease-in-out_infinite]" />
       
-      {/* نقش إسلامي مودرن مدمج مع الـخلفية الداكنة */}
+      {/* نقش إسلامي مودرن مدمج مع الخلفية الداكنة */}
       <div className="absolute inset-0 opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/islamic-art.png')] pointer-events-none mix-blend-overlay" />
 
       <motion.div
@@ -105,21 +109,21 @@ export default function RegisterPage() {
                 </motion.div>
               )}
 
-              {/* Email Input Container */}
+              {/* Username Input Container */}
               <div className="space-y-2 text-right rtl:text-right">
-                <Label htmlFor="email" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
-                  <span>{t('البريد الإلكتروني', 'Email')}</span>
+                <Label htmlFor="username" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('اسم المستخدم', 'Username')}</span>
                   <User className="w-3.5 h-3.5 text-slate-500" />
                 </Label>
                 <div className="relative group">
                   <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                     className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 focus:bg-slate-950/90 transition-all px-4"
-                    placeholder="example@domain.com"
+                    placeholder="arwasameh"
                   />
                 </div>
               </div>
