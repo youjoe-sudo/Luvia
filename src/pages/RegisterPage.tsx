@@ -11,12 +11,12 @@ import { motion } from 'framer-motion';
 import { UserPlus, User, Lock, ShieldCheck, ArrowRight, RefreshCcw } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUpWithUsername, signInWithUsername } = useAuth();
+  const { signUpWithEmail, signInWithEmail } = useAuth(); // تم التغيير للاعتماد على الإيميل
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -37,11 +37,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const { error: signUpError } = await signUpWithUsername(username, password);
+      const { error: signUpError } = await signUpWithEmail(email, password);
       
       if (signUpError) {
-        if (signUpError.message?.includes('unique constraint')) {
-          setError(t('اسم المستخدم ده موجود قبل كده، اختار اسم تاني', 'Username already exists'));
+        if (signUpError.message?.includes('unique constraint') || signUpError.message?.includes('already registered')) {
+          setError(t('البريد الإلكتروني هذا مسجل بالفعل، استخدم بريد آخر', 'Email already exists'));
         } else {
           setError(signUpError.message);
         }
@@ -49,7 +49,7 @@ export default function RegisterPage() {
         return;
       }
 
-      await signInWithUsername(username, password);
+      await signInWithEmail(email, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
@@ -64,7 +64,7 @@ export default function RegisterPage() {
       <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_10s_ease-in-out_infinite]" />
       <div className="absolute bottom-[-15%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_8s_ease-in-out_infinite]" />
       
-      {/* نقش إسلامي مودرن مدمج مع الخلفية الداكنة */}
+      {/* نقش إسلامي مودرن مدمج مع الـخلفية الداكنة */}
       <div className="absolute inset-0 opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/islamic-art.png')] pointer-events-none mix-blend-overlay" />
 
       <motion.div
@@ -105,21 +105,21 @@ export default function RegisterPage() {
                 </motion.div>
               )}
 
-              {/* Username Input Container */}
+              {/* Email Input Container */}
               <div className="space-y-2 text-right rtl:text-right">
-                <Label htmlFor="username" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
-                  <span>{t('اسم المستخدم', 'Username')}</span>
+                <Label htmlFor="email" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
+                  <span>{t('البريد الإلكتروني', 'Email')}</span>
                   <User className="w-3.5 h-3.5 text-slate-500" />
                 </Label>
                 <div className="relative group">
                   <Input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 focus:bg-slate-950/90 transition-all px-4"
-                    placeholder="john_doe"
+                    placeholder="example@domain.com"
                   />
                 </div>
               </div>
