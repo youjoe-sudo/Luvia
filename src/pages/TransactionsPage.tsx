@@ -37,30 +37,41 @@ export default function PointsTransferPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiverCode || !amount) return;
+    if (!receiverCode || !amount) return; //
 
-    const pointsToTransfer = Number(amount);
-    if (pointsToTransfer <= 0) {
-      toast.error('يرجى إدخال كمية نقاط صالحة وأكبر من الصفر');
+    const pointsToTransfer = Number(amount); //
+    if (pointsToTransfer <= 0) { //
+      toast.error('يرجى إدخال كمية نقاط صالحة وأكبر من الصفر'); //
       return;
     }
 
-    if (pointsToTransfer > myPoints) {
-      toast.error('رصيد نقاطك الحالي لا يكفي لإتمام هذه المعاملة');
+    if (pointsToTransfer > myPoints) { //
+      toast.error('رصيد نقاطك الحالي لا يكفي لإتمام هذه المعاملة'); //
       return;
     }
 
     try {
-      setIsSubmitting(true);
-      await transferPointsByCode(receiverCode, pointsToTransfer);
-      toast.success(`تم تحويل ${pointsToTransfer} نقطة بنجاح 🚀`);
-      setReceiverCode('');
-      setAmount('');
+      setIsSubmitting(true); //
+      
+      // 1. جلب بيانات المستخدم الحالي (المرسل) عشان نطلع الـ ID بتاعه
+      const { data: { user } } = await supabase.auth.getUser(); //
+      if (!user) {
+        toast.error('جلسة العمل انتهت، يرجى إعادة تسجيل الدخول');
+        return;
+      }
+
+      // 2. 🎯 التعديل القاتل هنا: نمرر الـ 3 باراميترز بالترتيب الصحيح للدالة
+      await transferPointsByCode(user.id, receiverCode.trim(), pointsToTransfer); //
+      
+      toast.success(`تم تحويل ${pointsToTransfer} نقطة بنجاح 🚀`); //
+      setReceiverCode(''); //
+      setAmount(''); //
       await loadMyBalance(); // تحديث الرصيد بعد النجاح
     } catch (error: any) {
-      toast.error(error.message || 'حدث خطأ أثناء تحويل النقاط، يرجى المحاولة لاحقاً');
+      console.error(error);
+      toast.error(error.message || 'حدث خطأ أثناء تحويل النقاط، يرجى المحاولة لاحقاً'); //
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); //
     }
   };
 

@@ -6,6 +6,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentCourseViewPage from './pages/StudentCourseViewPage';
 import StudentCertificatesPage from './pages/StudentCertificatesPage';
+import transictonHistory from './pages/TransactionsHistory'; 
 import VerifyCertificatePage from './pages/VerifyCertificatePage';
 import AdminPanel from './pages/AdminPanel';
 import InstructorPanel from './pages/InstructorPanel';
@@ -44,6 +45,11 @@ const routes: RouteConfig[] = [
     name: 'Course Details',
     path: '/courses/:courseId',
     element: <CourseDetailsPage />,
+  },
+  {
+    name: 'Transactions History',
+    path: '/transactions-history',
+    element: <TransactionsHistory />,
   },
   {
     name: 'Leaderboard',

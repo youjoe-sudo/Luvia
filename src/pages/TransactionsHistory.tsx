@@ -1,316 +1,156 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/db/supabase';
-import { getProfile } from '@/db/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Coins, 
-  History, 
-  User, 
-  QrCode, 
-  Calendar, 
-  Gift,
-  ArrowRightLeft
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getUserTransactions } from '@/db/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'framer-motion';
+import { ArrowUpRight, ArrowDownLeft, Gift, BookOpen, HelpCircle, Calendar, Coins } from 'lucide-react';
 
-interface TransactionLog {
-  id: string;
-  points_change: number;
-  reason: string;
-  transaction_type: string; // 'charge' | 'transfer_sent' | 'transfer_received' | 'reward'
-  sender_name?: string;
-  receiver_name?: string;
-  sender_code?: string;
-  receiver_code?: string;
-  created_at: string;
+interface Transaction {
+  id: string | number;
+  amount: number;
+  transaction_type: string;
+  description: string;
+  activated_at: string; // 🎯 العمود الحقيقي
 }
 
-export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<TransactionLog[]>([]);
-  const [myPoints, setMyPoints] = useState(0);
-  const [totalCharged, setTotalCharged] = useState(0);
-  const [totalSent, setTotalSent] = useState(0);
+export default function TransactionHistory() {
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadTransactionData() {
+    async function fetchHistory() {
+      if (!user?.id) return;
       try {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          // 1. جلب رصيد الطالب الحالي
-          const profileData = await getProfile(user.id);
-          setMyPoints((profileData as any)?.points || 0);
-
-          // 2. جلب سجل المعاملات من جدول الترانزاكشنز أو الـ history
-          // بنعمل استعلام شامل عشان نجيب تفاصيل الراسل والمستقبل لو موجودة
-          const { data: logs, error } = await supabase
-            .from('points_history')
-            .select(`
-              id,
-              points_change,
-              amount,
-              reason,
-              transaction_type,
-              created_at,
-              sender_code,
-              receiver_code,
-              profiles!points_history_sender_id_fkey(name, full_name),
-              receiver_profile:profiles!points_history_receiver_id_fkey(name, full_name)
-            `)
-            .eq('student_id', user.id) // أو لو العمليات مربوطة بحسابه كراسل أو مستقبل
-            .order('created_at', { ascending: false });
-
-          if (error) throw error;
-
-          // 3. عمل Mapping مرن للبيانات لتلائم كل مسميات الداتابيز المتاحة عندك
-          const formattedLogs: TransactionLog[] = (logs || []).map((log: any) => {
-            const change = log.points_change !== undefined ? log.points_change : (log.amount || 0);
-            
-            // تحديد نوع العملية بدقة لو مش مسجلة في الداتابيز مباشرة
-            let type = log.transaction_type || 'reward';
-            if (change < 0) type = 'transfer_sent';
-            else if (log.reason?.includes('شحن') || log.reason?.includes('كود')) type = 'charge';
-            else if (log.sender_code && log.sender_code !== (profileData as any)?.student_code) type = 'transfer_received';
-
-            return {
-              id: log.id,
-              points_change: change,
-              reason: log.reason || 'مكافأة أو عملية منصة 🌟',
-              transaction_type: type,
-              sender_name: log.profiles?.name || log.profiles?.full_name || undefined,
-              receiver_name: log.receiver_profile?.name || log.receiver_profile?.full_name || undefined,
-              sender_code: log.sender_code || undefined,
-              receiver_code: log.receiver_code || undefined,
-              created_at: log.created_at
-            };
-          });
-
-          setTransactions(formattedLogs);
-
-          // 4. حساب الإحصائيات السريعة للكروت
-          let charged = 0;
-          let sent = 0;
-          formattedLogs.forEach(log => {
-            if (log.transaction_type === 'charge') {
-              charged += log.points_change;
-            } else if (log.transaction_type === 'transfer_sent') {
-              sent += Math.abs(log.points_change);
-            }
-          });
-          setTotalCharged(charged);
-          setTotalSent(sent);
-        }
+        const data = await getUserTransactions(user.id);
+        console.log("العمليات المسترجعة من الحساب الحركي:", data);
+        setTransactions(data || []);
       } catch (error) {
         console.error('Error loading transactions:', error);
       } finally {
         setLoading(false);
       }
     }
+    fetchHistory();
+  }, [user?.id]);
 
-    loadTransactionData();
-  }, []);
-
-  // دالة لتلوين وتنسيق أيقونة ونوع المعاملة
-  const renderTypeBadge = (type: string) => {
+  const getTransactionStyle = (type: string, amount: number) => {
     switch (type) {
-      case 'charge':
-        return (
-          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 gap-1 rounded-lg">
-            <QrCode className="w-3 h-3" /> شحن كود
-          </Badge>
-        );
-      case 'transfer_sent':
-        return (
-          <Badge className="bg-red-500/10 text-red-400 border border-red-500/20 gap-1 rounded-lg">
-            <ArrowUpRight className="w-3 h-3" /> تحويل لصديق
-          </Badge>
-        );
-      case 'transfer_received':
-        return (
-          <Badge className="bg-blue-500/10 text-blue-400 border border-blue-500/20 gap-1 rounded-lg">
-            <ArrowDownLeft className="w-3 h-3" /> استقبال من صديق
-          </Badge>
-        );
+      case 'daily_spin':
+        return {
+          icon: <Gift className="w-5 h-5 text-amber-400" />,
+          bgColor: 'bg-amber-500/10 border-amber-500/20',
+          textColor: 'text-emerald-400'
+        };
+      case 'lesson_completion':
+        return {
+          icon: <BookOpen className="w-5 h-5 text-purple-400" />,
+          bgColor: 'bg-purple-500/10 border-purple-500/20',
+          textColor: 'text-emerald-400'
+        };
+      case 'p2p_transfer':
+        const isLoss = amount < 0;
+        return {
+          icon: isLoss ? <ArrowUpRight className="w-5 h-5 text-red-400" /> : <ArrowDownLeft className="w-5 h-5 text-emerald-400" />,
+          bgColor: isLoss ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20',
+          textColor: isLoss ? 'text-red-400' : 'text-emerald-400'
+        };
       default:
-        return (
-          <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 gap-1 rounded-lg">
-            <Gift className="w-3 h-3" /> مكافأة تعليمية
-          </Badge>
-        );
+        return {
+          icon: <HelpCircle className="w-5 h-5 text-blue-400" />,
+          bgColor: 'bg-blue-500/10 border-blue-500/20',
+          textColor: amount >= 0 ? 'text-emerald-400' : 'text-red-400'
+        };
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6 space-y-6 text-right" dir="rtl">
-        <Skeleton className="h-12 w-64 bg-white/5 rounded-xl" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-28 bg-white/5 rounded-2xl" />
-          <Skeleton className="h-28 bg-white/5 rounded-2xl" />
-          <Skeleton className="h-28 bg-white/5 rounded-2xl" />
-        </div>
-        <Skeleton className="h-[400px] w-full bg-white/5 rounded-2xl" />
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-8 text-right" dir="rtl">
+    <div className="min-h-screen bg-[#030712] text-slate-100 p-4 md:p-8 font-sans antialiased relative overflow-hidden">
+      <div className="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] bg-purple-600/5 blur-[120px] rounded-full pointer-events-none" />
       
-      {/* رأس الصفحة */}
-      <div className="space-y-1.5">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-          <History className="h-7 w-7 text-blue-500" />
-          دفتر الحسابات والمعاملات 🪙
-        </h1>
-        <p className="text-xs text-slate-400">تتبع تفاصيل نقاطك الشاملة، أين تم إنفاقها وكيف تم تحصيلها واستقبالها.</p>
-      </div>
-
-      {/* صف الكروت الإحصائية الـ 3 المذهلة */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        
-        {/* كارت الرصيد الحالي */}
-        <Card className="bg-slate-900/40 border border-slate-800 rounded-2xl shadow-xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-2xl rounded-full" />
-          <CardHeader className="pb-2">
-            <CardDescription className="text-slate-400 font-bold text-xs flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5 text-amber-400" /> الرصيد المتوفر الآن
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-white font-mono flex items-baseline gap-1">
-              {myPoints} <span className="text-xs font-sans font-bold text-amber-500">نقطة مجمدة وصالحة</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* كارت إجمالي المشحون */}
-        <Card className="bg-slate-900/40 border border-slate-800 rounded-2xl shadow-xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-2xl rounded-full" />
-          <CardHeader className="pb-2">
-            <CardDescription className="text-slate-400 font-bold text-xs flex items-center gap-1.5">
-              <QrCode className="w-3.5 h-3.5 text-emerald-400" /> إجمالي النقاط المشحونة
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-emerald-400 font-mono flex items-baseline gap-1">
-              +{totalCharged} <span className="text-xs font-sans font-bold text-slate-500">نقطة من كروت الشحن</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* كارت إجمالي المحول لجهات خارجية */}
-        <Card className="bg-slate-900/40 border border-slate-800 rounded-2xl shadow-xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 blur-2xl rounded-full" />
-          <CardHeader className="pb-2">
-            <CardDescription className="text-slate-400 font-bold text-xs flex items-center gap-1.5">
-              <ArrowRightLeft className="w-3.5 h-3.5 text-red-400" /> نقاط قمت بتحويلها للأصدقاء
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-red-400 font-mono flex items-baseline gap-1">
-              -{totalSent} <span className="text-xs font-sans font-bold text-slate-500">نقطة صادرة بالكامل</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* كارت السجل والجدول الشامل */}
-      <Card className="border border-slate-800 bg-slate-950 shadow-2xl rounded-2xl overflow-hidden">
-        <CardHeader className="bg-slate-900/30 border-b border-slate-900">
-          <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-200">
-            <Coins className="h-5 w-5 text-amber-500" />
-            التاريخ التفصيلي لحركات الحساب
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-900/10">
-                <TableRow className="border-slate-900 hover:bg-transparent">
-                  <TableHead className="text-right text-slate-400 font-bold text-xs py-4 w-[140px]">نوع العملية</TableHead>
-                  <TableHead className="text-right text-slate-400 font-bold text-xs py-4">وصف المعاملة والسبب</TableHead>
-                  <TableHead className="text-right text-slate-400 font-bold text-xs py-4">الراسل / المستقبل (الكود)</TableHead>
-                  <TableHead className="text-center text-slate-400 font-bold text-xs py-4 w-[160px]">التاريخ والوقت</TableHead>
-                  <TableHead className="text-left text-slate-400 font-bold text-xs py-4 w-[120px]">القيمة بالفارق</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-slate-500 text-sm">
-                      لا يوجد أي حركات مالية أو معاملات مسجلة لحسابك حتى الآن 🍃
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  transactions.map((tx) => (
-                    <TableRow key={tx.id} className="border-slate-900/60 hover:bg-slate-900/20 transition-colors">
-                      
-                      {/* نوع العملية */}
-                      <TableCell className="py-4">
-                        {renderTypeBadge(tx.transaction_type)}
-                      </TableCell>
-
-                      {/* سبب المعاملة */}
-                      <TableCell className="py-4 font-semibold text-xs text-slate-200">
-                        {tx.reason}
-                      </TableCell>
-
-                      {/* الراسل والمستقبل والأكواد */}
-                      <TableCell className="py-4 text-xs text-slate-400">
-                        {tx.transaction_type === 'transfer_sent' && (
-                          <span className="flex items-center gap-1 text-red-400/80">
-                            <User className="w-3 h-3" /> إلى: {tx.receiver_name || 'طالب آخر'} 
-                            {tx.receiver_code && <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[10px]">({tx.receiver_code})</span>}
-                          </span>
-                        )}
-                        {tx.transaction_type === 'transfer_received' && (
-                          <span className="flex items-center gap-1 text-blue-400/80">
-                            <User className="w-3 h-3" /> من: {tx.sender_name || 'طالب آخر'} 
-                            {tx.sender_code && <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[10px]">({tx.sender_code})</span>}
-                          </span>
-                        )}
-                        {tx.transaction_type !== 'transfer_sent' && tx.transaction_type !== 'transfer_received' && (
-                          <span className="text-slate-600 font-medium">—</span>
-                        )}
-                      </TableCell>
-
-                      {/* الوقت والتاريخ */}
-                      <TableCell className="py-4 text-center text-xs font-medium text-slate-500">
-                        <span className="flex items-center justify-center gap-1 font-mono">
-                          <Calendar className="w-3 h-3 text-slate-600" />
-                          {new Date(tx.created_at).toLocaleDateString('ar-EG', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </TableCell>
-
-                      {/* قيمة النقاط المضافة أو المخصومة */}
-                      <TableCell className="py-4 text-left font-mono text-base font-black">
-                        <span className={tx.points_change >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-                          {tx.points_change >= 0 ? `+${tx.points_change}` : tx.points_change}
-                        </span>
-                        <span className="text-[10px] font-sans font-bold text-slate-600 mr-0.5"> 🪙</span>
-                      </TableCell>
-
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      <div className="max-w-4xl mx-auto z-10 relative">
+        <div className="flex items-center gap-3 mb-8 justify-end flex-row-reverse text-right">
+          <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
+            <Coins className="w-6 h-6 text-purple-400" />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">
+              {t('سجل العمليات والحركات', 'Transaction History')}
+            </h1>
+            <p className="text-slate-500 text-xs mt-0.5">
+              {t('تابع تفاصيل حركات نقاطك داخل منصة لوفيا', 'Track your points activities')}
+            </p>
+          </div>
+        </div>
 
+        <Card className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-xl">
+          <CardHeader className="border-b border-slate-800/60 pb-4">
+            <CardTitle className="text-slate-200 text-sm font-bold text-right">
+              {t('آخر العمليات المسجلة', 'Recent Transactions')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="text-center py-16 text-slate-500 text-sm">
+                {t('لا توجد عمليات مسجلة في حسابك حتى الآن.', 'No transactions recorded yet.')}
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-800/50">
+                {transactions.map((tx, index) => {
+                  const style = getTransactionStyle(tx.transaction_type, tx.amount);
+                  // 🎯 قراءة الوقت من العمود الصحيح بالملّي
+                  const date = tx.activated_at ? new Date(tx.activated_at).toLocaleDateString('ar-EG', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : '';
+
+                  return (
+                    <motion.div
+                      key={tx.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.02 }}
+                      className="p-4 md:p-5 flex items-center justify-between hover:bg-slate-800/20 transition-colors flex-row-reverse text-right"
+                    >
+                      <div className="flex items-center gap-4 flex-row-reverse">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${style.bgColor}`}>
+                          {style.icon}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200 leading-tight">
+                            {tx.description}
+                          </p>
+                          <div className="flex items-center gap-1 text-slate-500 text-xs mt-1.5 flex-row-reverse justify-end">
+                            <Calendar className="w-3 h-3" />
+                            <span className="font-mono">{date}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-left font-sans">
+                        <span className={`text-base font-extrabold ${style.textColor}`}>
+                          {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
+                        </span>
+                        <span className="text-slate-500 text-xs font-medium ml-1">🪙</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

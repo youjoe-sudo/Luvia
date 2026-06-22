@@ -631,11 +631,13 @@ export async function getPointsHistory(userId: string) {
 
 export async function transferPointsByCode(senderId: string, receiverCode: string, amount: number) {
   console.log("--- بداية العملية ---");
-  console.log("المرسل:", senderId, "المستلم:", receiverCode, "المبلغ:", amount);
+  console.log("المرسل ID:", senderId, "المستلم Code:", receiverCode, "المبلغ:", amount);
 
-  if (amount <= 0) throw new Error('يجب أن يكون المبلغ أكبر من الصفر');
+  if (!amount || isNaN(amount) || amount <= 0) {
+    throw new Error('يجب أن يكون مبلغ التحويل أكبر من الصفر');
+  }
 
-  // 1. البحث عن الطالب
+  // 1. البحث عن الطالب المستلم باستخدام الكود الشخصي
   const { data: receiverProfile, error: receiverError } = await supabase
     .from('profiles')
     .select('id, points, user_code')
@@ -651,9 +653,15 @@ export async function transferPointsByCode(senderId: string, receiverCode: strin
     console.error("لم يتم العثور على طالب بالكود:", receiverCode);
     throw new Error('لم يتم العثور على طالب بهذا الكود');
   }
-  console.log("تم العثور على المستلم:", receiverProfile.id);
+  console.log("تم العثور على المستلم بنجاح بـ ID:", receiverProfile.id);
 
-  // 2. التحقق من المرسل
+  // 🎯 🔒 قفل الأمان الحاسم: منع التحويل للنفس نهائياً لمنع ثغرات تزويد النقاط
+  if (receiverProfile.id === senderId) {
+    console.error("محاولة تحويل غير قانونية: الطالب يحاول التحويل لنفسه!");
+    throw new Error('عفواً، لا يمكنك تحويل النقاط إلى حسابك الشخصي! 🚫');
+  }
+
+  // 2. التحقق من بيانات ورصيد الطالب المرسل
   const { data: senderProfile, error: senderError } = await supabase
     .from('profiles')
     .select('id, points, user_code')
@@ -668,11 +676,11 @@ export async function transferPointsByCode(senderId: string, receiverCode: strin
 
   if (senderProfile.points < amount) {
     console.error("الرصيد غير كافٍ");
-    throw new Error('رصيدك غير كافٍ');
+    throw new Error('رصيد نقاطك الحالي لا يكفي لإتمام هذه المعاملة');
   }
 
-  // 3. تحديث الرصيد (الخصم)
-  console.log("جاري خصم النقاط...");
+  // 3. تحديث الرصيد (خصم النقاط من حساب المرسل)
+  console.log("جاري خصم النقاط من المرسل...");
   const { error: deductError } = await supabase
     .from('profiles')
     .update({ points: senderProfile.points - amount })
@@ -684,7 +692,7 @@ export async function transferPointsByCode(senderId: string, receiverCode: strin
   }
   console.log("تم خصم النقاط بنجاح");
 
-  // 4. إضافة النقاط للمستلم
+  // 4. إضافة النقاط لحساب الطالب المستلم
   console.log("جاري إضافة النقاط للمستلم...");
   const { error: addError } = await supabase
     .from('profiles')
@@ -697,23 +705,37 @@ export async function transferPointsByCode(senderId: string, receiverCode: strin
   }
   console.log("تم إضافة النقاط بنجاح");
 
-  // 5. تسجيل العملية
-  console.log("جاري تسجيل العملية...");
-  const { error: logError } = await supabase.from('points_history').insert({
+  // 5. تسجيل المعاملة في جدول الـ history بالأعمدة الحقيقية بالملّي للطرفين
+  console.log("جاري تسجيل العملية في الـ History...");
+  const now = new Date().toISOString();
+  
+  // تسجيل حركة الخصم للمرسل
+  const { error: logSenderError } = await supabase.from('points_history').insert({
+    user_id: senderId,
     sender_id: senderId,
     receiver_id: receiverProfile.id,
-    amount: amount,
-    activated_at: new Date().toISOString(),
-    user_id: senderId,
-    transaction_type: 'p2p_transfer'
+    amount: -amount, // قيمة سالبة تظهر في سجل المرسل كخصم
+    transaction_type: 'p2p_transfer',
+    description: `تحويل نقاط إلى الطالب صاحب الكود (${receiverCode}) 📤`,
+    activated_at: now
   });
 
-  if (logError) {
-    console.error("خطأ أثناء التسجيل:", logError);
-    throw logError;
-  }
+  if (logSenderError) console.error("خطأ أثناء تسجيل حركة المرسل:", logSenderError);
+
+  // تسجيل حركة الإضافة للمستلم
+  const { error: logReceiverError } = await supabase.from('points_history').insert({
+    user_id: receiverProfile.id,
+    sender_id: senderId,
+    receiver_id: receiverProfile.id,
+    amount: amount, // قيمة موجبة تظهر في سجل المستلم كإضافة
+    transaction_type: 'p2p_transfer',
+    description: `استلام نقاط محولة من الطالب صاحب الكود (${senderProfile.user_code || 'سابق'}) 📥`,
+    activated_at: now
+  });
+
+  if (logReceiverError) console.error("خطأ أثناء تسجيل حركة المستلم:", logReceiverError);
   
-  console.log("--- تم التحويل بنجاح تام! ---");
+  console.log("--- تم التحويل وتسجيل الحركات بنجاح تام! ---");
   return { success: true };
 }
 // ==================== Daily Spin & Leaderboard APIs ====================
@@ -971,5 +993,18 @@ export async function updateUserStarsOrPoints(userId: string, points: number) {
     throw historyError;
   }
 
+  return data;
+}
+export async function getUserTransactions(userId: string) {
+  const { data, error } = await supabase
+    .from('points_history')
+    .select('id, amount, transaction_type, description, other_user_code, sender_id, receiver_id, activated_at')
+    .eq('user_id', userId)
+    .order('activated_at', { ascending: false }); // 🎯 التعديل هنا: الترتيب حسب العمود الحقيقي عندك
+
+  if (error) {
+    console.error("خطأ أثناء جلب السجل من الداتابيز:", error);
+    throw error;
+  }
   return data;
 }
