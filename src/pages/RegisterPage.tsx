@@ -50,8 +50,7 @@ export default function RegisterPage() {
         if (signUpError.message?.includes('unique constraint')) {
           setError(t('اسم المستخدم ده موجود قبل كده، اختار اسم تاني', 'Username already exists'));
         } 
-        else if (errMsg.includes('database error') || errMsg.includes('500') || errMsg.includes('saving new user')) {
-          setError(t(
+else if (signUpError.message?.toLowerCase().includes('database error') || signUpError.message?.includes('500') || signUpError.message?.toLowerCase().includes('saving new user')) {          setError(t(
             'حصلت مشكلة في السيرفر أثناء حفظ البيانات، يرجى التواصل مع الإدارة', 
             'Database error saving user, please contact support'
           ));

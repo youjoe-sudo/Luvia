@@ -725,10 +725,10 @@ export type SpinResult = {
 };
 
 export async function executeDailySpin(userId: string): Promise<SpinResult> {
-  // 1. جلب بيانات الطالب بالعمود الصحيح لـ الـ spin
+  // 1. جلب بيانات الطالب بالعمود الصحيح (last_spin_at)
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, points, last_spin_at') // 👈 تم التعديل إلى last_spin_at حسب جدولك
+    .select('id, points, last_spin_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -738,7 +738,7 @@ export async function executeDailySpin(userId: string): Promise<SpinResult> {
   const now = new Date();
   const lastSpin = profile.last_spin_at ? new Date(profile.last_spin_at) : null;
 
-  // 2. التحقق من مرور 24 ساعة (أو نفس اليوم)
+  // 2. التحقق من أن اللفة في يوم جديد
   if (lastSpin) {
     const sameDay =
       lastSpin.getFullYear() === now.getFullYear() &&
@@ -765,24 +765,32 @@ export async function executeDailySpin(userId: string): Promise<SpinResult> {
 
   const currentPoints = profile.points || 0;
 
-  // 3. تحديث النقاط ووقت اللفة بالأعمدة الحقيقية المتاحة في جدولك فقط
+  // 3. تحديث نقاط الطالب ووقت اللفة في جدول الـ profiles
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
       points: currentPoints + rewardPoints,
-      last_spin_at: now.toISOString(), // 👈 التعديل هنا لـ العمود الحقيقي
+      last_spin_at: now.toISOString(), // العمود الحقيقي في جدولك
     })
     .eq('id', userId);
 
   if (updateError) throw updateError;
 
-  // 4. تسجيل العملية في جدول الـ history المتوافق مع السيستم
-  await supabase.from('points_history').insert({
-    user_id: userId,
-    amount: rewardPoints,
-    activated_at: now.toISOString(),
-    transaction_type: 'daily_spin'
-  });
+  // 4. 🎯 تسجيل المعاملة في جدول الـ points_history بالأعمدة المطابقة بالملّي للسطر اللي أنت بعته
+  const { error: historyError } = await supabase
+    .from('points_history')
+    .insert({
+      user_id: userId,
+      amount: rewardPoints,
+      transaction_type: 'daily_spin',
+      description: `الفوز بـ ${rewardPoints} نقطة من عجلة الحظ اليومية 🎡`,
+      activated_at: now.toISOString()
+    });
+
+  if (historyError) {
+    console.error("Error inserting into points_history:", historyError);
+    throw historyError;
+  }
 
   return {
     success: true,
@@ -937,7 +945,7 @@ export async function updateUserStarsOrPoints(userId: string, points: number) {
 
   const currentPoints = profile?.points || 0;
 
-  // 2. تحديث الرصيد وإضافة الـ 5 نقاط الجديدة
+  // 2. تحديث الرصيد وإضافة النقاط الجديدة في جدول الـ profiles
   const { data, error } = await supabase
     .from('profiles')
     .update({ points: currentPoints + points })
@@ -947,13 +955,21 @@ export async function updateUserStarsOrPoints(userId: string, points: number) {
 
   if (error) throw error;
 
-  // 3. إضافة سجل في جدول الـ history لتوثيق المكافأة
-  await supabase.from('points_history').insert({
-    user_id: userId,
-    points_change: points,
-    reason: 'Lesson Completion Reward',
-    created_at: new Date().toISOString(),
-  });
+  // 3. 🎯 إضافة السجل في جدول الـ points_history بالأعمدة الحقيقية الصحيحة
+  const { error: historyError } = await supabase
+    .from('points_history')
+    .insert({
+      user_id: userId,
+      amount: points, // العمود الحقيقي بدلاً من points_change
+      transaction_type: 'lesson_completion', // القيمة المناسبة للـ Dashboard بدلاً من الـ reason الوهمي
+      description: `مكافأة إكمال درس تعليمي بنجاح وتطوير المهارات 📚`, // وصف منسق يظهر للمستعمل
+      activated_at: new Date().toISOString() // العمود الحقيقي للوقت بدلاً من created_at
+    });
+
+  if (historyError) {
+    console.error("Error inserting lesson completion into points_history:", historyError);
+    throw historyError;
+  }
 
   return data;
 }
