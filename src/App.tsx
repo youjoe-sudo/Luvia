@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import IntersectObserver from '@/components/common/IntersectObserver';
-import { Header } from '@/components/layouts/Header';
+import { Header } from './components/layouts/Header';
 import routes from './routes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -13,35 +13,35 @@ const App: React.FC = () => {
   return (
     <Router>
       <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <IntersectObserver />
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow">
-              <Routes>
-                {routes.map((route: any, index: number) => (
-                  <Route
-                    key={index}
-                    path={route.path}
-                    element={
-                      // نمرر isAdmin و isInstructor للـ Guard
-                      <RouteGuard 
-                        isAdminRoute={route.isAdmin} 
-                        isInstructorRoute={route.isInstructor}
-                      >
-                        {route.element}
-                      </RouteGuard>
-                    }
-                  />
-                ))}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
-          </div>
-          <Toaster />
-        </AuthProvider>
-      </LanguageProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            {/* الآن كل المكونات بالداخل مضمونة 100% أنها تقرأ الـ useAuth بدون أي Crash */}
+            <IntersectObserver />
+            <div className="flex flex-col min-h-screen">
+              <Header /> 
+              <main className="flex-grow">
+                <Routes>
+                  {routes.map((route: any, index: number) => (
+                    <Route
+                      key={index}
+                      path={route.path}
+                      element={
+                        <RouteGuard 
+                          isAdminRoute={route.isAdmin} 
+                          isInstructorRoute={route.isInstructor}
+                        >
+                          {route.element}
+                        </RouteGuard>
+                      }
+                    />
+                  ))}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+            </div>
+            <Toaster />
+          </AuthProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </Router>
   );

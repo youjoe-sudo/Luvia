@@ -725,9 +725,10 @@ export type SpinResult = {
 };
 
 export async function executeDailySpin(userId: string): Promise<SpinResult> {
+  // 1. جلب بيانات الطالب بالعمود الصحيح لـ الـ spin
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, points, last_daily_spin_at, daily_spin_streak')
+    .select('id, points, last_spin_at') // 👈 تم التعديل إلى last_spin_at حسب جدولك
     .eq('id', userId)
     .maybeSingle();
 
@@ -735,8 +736,9 @@ export async function executeDailySpin(userId: string): Promise<SpinResult> {
   if (!profile) throw new Error('لم يتم العثور على الحساب');
 
   const now = new Date();
-  const lastSpin = profile.last_daily_spin_at ? new Date(profile.last_daily_spin_at) : null;
+  const lastSpin = profile.last_spin_at ? new Date(profile.last_spin_at) : null;
 
+  // 2. التحقق من مرور 24 ساعة (أو نفس اليوم)
   if (lastSpin) {
     const sameDay =
       lastSpin.getFullYear() === now.getFullYear() &&
@@ -757,34 +759,35 @@ export async function executeDailySpin(userId: string): Promise<SpinResult> {
     }
   }
 
-  const rewards = [5, 10, 15, 20, 25, 50];
+  // مصفوفة الجوائز المتوافقة مع الـ UI
+  const rewards = [5, 10, 15, 20, 50]; 
   const rewardPoints = rewards[Math.floor(Math.random() * rewards.length)];
 
   const currentPoints = profile.points || 0;
-  const currentStreak = profile.daily_spin_streak || 0;
 
+  // 3. تحديث النقاط ووقت اللفة بالأعمدة الحقيقية المتاحة في جدولك فقط
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
       points: currentPoints + rewardPoints,
-      last_daily_spin_at: now.toISOString(),
-      daily_spin_streak: currentStreak + 1,
+      last_spin_at: now.toISOString(), // 👈 التعديل هنا لـ العمود الحقيقي
     })
     .eq('id', userId);
 
   if (updateError) throw updateError;
 
+  // 4. تسجيل العملية في جدول الـ history المتوافق مع السيستم
   await supabase.from('points_history').insert({
     user_id: userId,
-    points_change: rewardPoints,
-    reason: 'Daily spin reward',
-    created_at: now.toISOString(),
+    amount: rewardPoints,
+    activated_at: now.toISOString(),
+    transaction_type: 'daily_spin'
   });
 
   return {
     success: true,
     rewardPoints,
-    message: `مبروك! ربحت ${rewardPoints} نقطة`,
+    message: `مبروك! ربحت ${rewardPoints} نقطة 🪙`,
   };
 }
 

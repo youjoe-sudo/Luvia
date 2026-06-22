@@ -36,7 +36,7 @@ export default function AdminLessonProgressPage() {
   const loadCourses = async () => {
     try {
       const data = await getAllCourses(false);
-      setCourses(data);
+      setCourses(data || []);
     } catch (error) {
       console.error('Error loading courses:', error);
     }
@@ -45,52 +45,92 @@ export default function AdminLessonProgressPage() {
   const loadCourseData = async () => {
     setLoading(true);
     try {
+      // 1. جلب الدروس الخاصة بالكورس المحدد فقط
       const lessonsData = await getLessonsByCourse(selectedCourseId);
-      setLessons(lessonsData);
-      const { progress, students: studentsData } = await getCourseProgressForAdmin(selectedCourseId);
-      setProgressData(progress as any);
-      setStudents(studentsData as any);
+      const safeLessons = lessonsData || [];
+      setLessons(safeLessons);
+
+      // 2. جلب سجلات التقدم لجميع الكورسات من الباك إند
+      const rawProgress = await getCourseProgressForAdmin(selectedCourseId);
+      const allProgress = Array.isArray(rawProgress) ? rawProgress : [];
+      
+      // 3. فلترة سجلات التقدم هنا برمجياً لضمان أن الدرس ينتمي للكورس الحالي فقط ومعه بيانات الطالب كاملة
+      const filteredProgress = allProgress.filter((item: any) => {
+        return item?.lessons && item.lessons.course_id === selectedCourseId && item?.profiles;
+      });
+      
+      setProgressData(filteredProgress);
+
+      // 4. استخراج الطلاب المشتركين في هذا الكورس تحديداً بناءً على تقدمهم بالدروس
+      const uniqueStudentsMap = new Map();
+      filteredProgress.forEach((item: any) => {
+        if (item.profiles && item.profiles.id) {
+          uniqueStudentsMap.set(item.profiles.id, item.profiles);
+        }
+      });
+      
+      const studentsList = Array.from(uniqueStudentsMap.values());
+      setStudents(studentsList);
+
     } catch (error) {
       console.error('Error loading course data:', error);
+      setLessons([]);
+      setProgressData([]);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
   const stats = useMemo(() => {
-    if (students.length === 0) return { avg: 0, total: 0, struggling: 0 };
-    const totalCompletion = students.reduce((acc, s) => {
-      const count = progressData.filter(p => p.user_id === s.id && p.is_completed).length;
-      return acc + (count / (lessons.length || 1));
+    const safeStudents = students || [];
+    const safeLessons = lessons || [];
+    const safeProgress = progressData || [];
+
+    if (safeStudents.length === 0) return { avg: 0, total: 0, struggling: 0 };
+    
+    const totalCompletion = safeStudents.reduce((acc, s) => {
+      const count = safeProgress.filter(p => p.user_id === s.id && p.is_completed).length;
+      return acc + (count / (safeLessons.length || 1));
     }, 0);
-    const strugglingList = students.filter(s => !progressData.some(p => p.user_id === s.id && p.is_completed));
+    
+    const strugglingList = safeStudents.filter(s => !safeProgress.some(p => p.user_id === s.id && p.is_completed));
+    
     return {
-      avg: Math.round((totalCompletion / students.length) * 100),
-      total: students.length,
+      avg: Math.round((totalCompletion / safeStudents.length) * 100),
+      total: safeStudents.length,
       struggling: strugglingList.length
     };
   }, [students, progressData, lessons]);
 
   const filteredStudents = useMemo(() => {
-    let list = students;
+    const safeStudents = students || [];
+    const safeProgress = progressData || [];
+    
+    let list = safeStudents;
     if (filterType === 'struggling') {
-      list = list.filter(s => !progressData.some(p => p.user_id === s.id && p.is_completed));
+      list = list.filter(s => !safeProgress.some(p => p.user_id === s.id && p.is_completed));
     }
     return list.filter(s => 
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      s.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (s.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()) || 
+      (s.email || '').toLowerCase().includes((searchQuery || '').toLowerCase())
     );
   }, [students, searchQuery, filterType, progressData]);
 
-  const displayedLessons = useMemo(() => 
-    selectedLessonIds.length === 0 ? lessons : lessons.filter(l => selectedLessonIds.includes(l.id))
-  , [lessons, selectedLessonIds]);
+  const displayedLessons = useMemo(() => {
+    const safeLessons = lessons || [];
+    return selectedLessonIds.length === 0 ? safeLessons : safeLessons.filter(l => selectedLessonIds.includes(l.id));
+  }, [lessons, selectedLessonIds]);
 
   const handleExportExcel = () => {
-    const data = students.map(s => {
+    const safeStudents = students || [];
+    const safeLessons = lessons || [];
+    const safeProgress = progressData || [];
+
+    const data = safeStudents.map(s => {
       const row: any = { 'Student': s.name, 'Email': s.email };
-      lessons.forEach((l, i) => {
-        const isDone = progressData.find(p => p.user_id === s.id && p.lesson_id === l.id)?.is_completed;
+      safeLessons.forEach((l, i) => {
+        const isDone = safeProgress.find(p => p.user_id === s.id && p.lesson_id === l.id)?.is_completed;
         row[`L${i+1}: ${language === 'ar' ? l.title_ar : l.title_en}`] = isDone ? 'Done ✅' : 'No ❌';
       });
       return row;
@@ -125,7 +165,7 @@ export default function AdminLessonProgressPage() {
                 <SelectValue placeholder={t('اختر الكورس', 'Select Course')} />
               </SelectTrigger>
               <SelectContent className="bg-[#0a0f1e] border-white/10 text-white">
-                {courses.map(c => (
+                {(courses || []).map(c => (
                   <SelectItem key={c.id} value={c.id}>
                     {language === 'ar' ? c.title_ar : c.title_en}
                   </SelectItem>

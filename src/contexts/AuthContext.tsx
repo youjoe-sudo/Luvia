@@ -24,7 +24,8 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signInWithUsername: (username: string, password: string) => Promise<{ error: Error | null }>;
-  signUpWithUsername: (username: string, password: string) => Promise<{ error: Error | null }>;
+  // تعديل الـ Type هنا ليستقبل الـ options الاختيارية
+  signUpWithUsername: (username: string, password: string, options?: any) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -36,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // دالة لتحديث البروفايل يدوياً أو عند الحاجة
   const refreshProfile = async () => {
     if (!user) {
       setProfile(null);
@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // التحقق من الجلسة الحالية عند بداية تشغيل التطبيق
     supabase.auth.getSession().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
@@ -61,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // مراقبة تغييرات حالة تسجيل الدخول (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
@@ -87,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       if (data.user) {
-        // 1. التحقق من تغيير الجهاز
         const deviceCheck = await checkDeviceChange(data.user.id);
         
         if (deviceCheck.changed) {
@@ -100,11 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         }
         
-        // 2. حفظ بصمة الجهاز (حل مشكلة الـ Argument المفقود)
         const { fingerprint, ip } = await saveDeviceFingerprint(data.user.id);
         await updateDeviceFingerprint(data.user.id, fingerprint, ip);
 
-        // 3. جلب البروفايل فوراً عشان الـ Role يظهر صح في الـ App
         const profileData = await getProfile(data.user.id);
         setProfile(profileData);
       }
@@ -117,12 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUpWithUsername = async (username: string, password: string) => {
+  // 🔴 التعديل الجوهري هنا لاستقبال الـ options وتمريرها للسيرفر
+  const signUpWithUsername = async (username: string, password: string, options?: any) => {
     try {
       const email = `${username}@miaoda.com`;
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options, // 👈 تمرير الـ options لكي تحتوي على الـ metadata (الـ username)
       });
 
       if (error) throw error;
@@ -134,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    localStorage.clear(); // تنظيف شامل للمتصفح من أي بيانات قديمة
+    localStorage.clear();
     setUser(null);
     setProfile(null);
   };

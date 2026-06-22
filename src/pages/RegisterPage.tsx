@@ -24,11 +24,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    // 1. فحص تطابق كلمة المرور
     if (password !== confirmPassword) {
       setError(t('الباسووردات مش متطابقة', 'Passwords do not match'));
       return;
     }
 
+    // 2. فحص طول كلمة المرور
     if (password.length < 6) {
       setError(t('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'Password must be at least 6 characters'));
       return;
@@ -37,34 +39,49 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const { error: signUpError } = await signUpWithUsername(username, password);
+      // التعديل السحري: نمرر الـ username داخل الـ options.data عشان السيرفر يشوفه
+      const { error: signUpError } = await signUpWithUsername(username, password, {
+        data: { username: username, name: username }
+      });
       
       if (signUpError) {
-        if (signUpError.message?.includes('unique constraint')) {
+        const errMsg = signUpError.message?.toLowerCase() || '';
+        
+        if (errMsg.includes('unique constraint') || errMsg.includes('already exists')) {
           setError(t('اسم المستخدم ده موجود قبل كده، اختار اسم تاني', 'Username already exists'));
-        } else {
+        } 
+        else if (errMsg.includes('database error') || errMsg.includes('500') || errMsg.includes('saving new user')) {
+          setError(t(
+            'حصلت مشكلة في السيرفر أثناء حفظ البيانات، يرجى التواصل مع الإدارة', 
+            'Database error saving user, please contact support'
+          ));
+        } 
+        else {
           setError(signUpError.message);
         }
         setLoading(false);
         return;
       }
 
+      // تسجيل الدخول التلقائي
       await signInWithUsername(username, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
+      const catchMsg = err.message?.toLowerCase() || '';
+      
+      if (catchMsg.includes('fetch') || catchMsg.includes('network')) {
+        setError(t('مشكلة في الاتصال بالإنترنت، تحقق من شبكتك', 'Network error, please check your internet connection'));
+      } else {
+        setError(err.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
+      }
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#030712] relative overflow-hidden p-4 font-sans antialiased selection:bg-purple-500/30 selection:text-purple-200">
-      
-      {/* --- BACKGROUND AMBIENT NEON GLOWS --- */}
       <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_10s_ease-in-out_infinite]" />
       <div className="absolute bottom-[-15%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none animate-[pulse_8s_ease-in-out_infinite]" />
-      
-      {/* نقش إسلامي مودرن مدمج مع الخلفية الداكنة */}
       <div className="absolute inset-0 opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/islamic-art.png')] pointer-events-none mix-blend-overlay" />
 
       <motion.div
@@ -74,7 +91,6 @@ export default function RegisterPage() {
         className="w-full max-w-md z-10"
       >
         <Card className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border-b-2 border-b-purple-500/20 relative">
-          
           <CardHeader className="text-center pt-10 pb-6">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -84,11 +100,9 @@ export default function RegisterPage() {
             >
               <UserPlus className="w-6 h-6 text-purple-400" />
             </motion.div>
-            
             <div className="text-4xl font-extrabold tracking-tight text-white mb-2 font-sans">
               Luvia<span className="text-purple-500">.</span>
             </div>
-            
             <CardTitle className="text-slate-200 text-lg font-bold">{t('إنشاء حساب جديد', 'Create Account')}</CardTitle>
             <CardDescription className="text-slate-500 text-xs mt-1">
               {t('انضم إلينا اليوم وابدأ رحلتك التعليمية المتقدمة', 'Join us today and unlock advanced pathways')}
@@ -105,7 +119,6 @@ export default function RegisterPage() {
                 </motion.div>
               )}
 
-              {/* Username Input Container */}
               <div className="space-y-2 text-right rtl:text-right">
                 <Label htmlFor="username" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
                   <span>{t('اسم المستخدم', 'Username')}</span>
@@ -124,7 +137,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Password Input Container */}
               <div className="space-y-2 text-right rtl:text-right">
                 <Label htmlFor="password" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
                   <span>{t('الباسوورد', 'Password')}</span>
@@ -143,7 +155,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Confirm Password Input Container */}
               <div className="space-y-2 text-right rtl:text-right">
                 <Label htmlFor="confirmPassword" className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-2 flex-row-reverse justify-end">
                   <span>{t('تأكيد الباسوورد', 'Confirm Password')}</span>
@@ -162,7 +173,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm shadow-md shadow-purple-600/5 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 mt-4 cursor-pointer"
@@ -181,7 +191,6 @@ export default function RegisterPage() {
                 )}
               </Button>
 
-              {/* Bottom Navigation */}
               <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-950/60 mt-4">
                 {t('لديك حساب بالفعل؟', 'Already have an account?')}{' '}
                 <Link to="/login" className="text-purple-400 hover:text-purple-300 font-semibold underline-offset-4 hover:underline transition-colors ml-1">
