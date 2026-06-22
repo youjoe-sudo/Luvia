@@ -16,7 +16,9 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUpWithUsername, signInWithUsername } = useAuth();
+  
+  // رجعنا للمسميات الأصلية بتاعت الـ Context عشان متضربش تني
+  const { signUpWithUsername, signInWithUsername } = useAuth(); 
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -38,16 +40,14 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    // بنهيكل الاسم هنا لـ إيميل لوفيا عشان يروح لقاعدة البيانات متقفل صح
+    const formattedEmail = `${username.trim().toLowerCase()}@luvia.com`;
+
     try {
-      // التعديل السحري: نمرر الـ username داخل الـ options.data عشان السيرفر يشوفه
-      const { error: signUpError } = await signUpWithUsername(username, password, {
-        data: { username: username, name: username }
-      });
+      const { error: signUpError } = await signUpWithUsername(username, password);
       
       if (signUpError) {
-        const errMsg = signUpError.message?.toLowerCase() || '';
-        
-        if (errMsg.includes('unique constraint') || errMsg.includes('already exists')) {
+        if (signUpError.message?.includes('unique constraint')) {
           setError(t('اسم المستخدم ده موجود قبل كده، اختار اسم تاني', 'Username already exists'));
         } 
         else if (errMsg.includes('database error') || errMsg.includes('500') || errMsg.includes('saving new user')) {
@@ -63,7 +63,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // تسجيل الدخول التلقائي
       await signInWithUsername(username, password);
       navigate('/');
     } catch (err: any) {
@@ -132,7 +131,7 @@ export default function RegisterPage() {
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     className="h-12 bg-slate-950/50 border-slate-800/80 rounded-xl text-slate-200 text-sm placeholder:text-slate-700 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 focus:bg-slate-950/90 transition-all px-4"
-                    placeholder="john_doe"
+                    placeholder="arwasameh"
                   />
                 </div>
               </div>
